@@ -1,0 +1,33 @@
+{
+  "name": "weather-reporter-api",
+  "version": "1.0.0",
+  "description": "Weather Reporter API with authentication",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@auth/core": "^0.34.2",
+    "@emailjs/browser": "^4.4.1",
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "next": "^14.1.0",
+    "next-auth": "^4.24.11",
+    "node-fetch": "^3.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.19.1",
+    "@types/react": "^18.2.57",
+    "@types/react-dom": "^18.2.19",
+    "prisma": "^5.10.0",
+    "typescript": "^5.3.3"
+  }
+}
