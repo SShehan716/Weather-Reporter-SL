@@ -1,0 +1,37 @@
+import nodemailer from 'nodemailer';
+
+// Create reusable transporter object using Gmail SMTP
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_APP_PASSWORD // Gmail App Password
+  }
+});
+
+export async function sendVerificationEmail(
+  to_email: string,
+  verification_link: string
+) {
+  // Email options
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: to_email,
+    subject: 'Verify Your Email - Weather Reporter',
+    html: `
+      <h1>Email Verification</h1>
+      <p>Please click the link below to verify your email address:</p>
+      <a href="${verification_link}">Verify Email</a>
+      <p>If you did not create an account, please ignore this email.</p>
+    `
+  };
+
+  // Send email
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Verification email sent successfully');
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    throw new Error('Failed to send verification email');
+  }
+} 
