@@ -23,13 +23,36 @@ app.use(express.json());
 
 // Register
 app.post('/api/register', async (req, res) => {
-  const { email, password } = req.body;
+  const { username, email, password } = req.body;
+  
+  // Validate required fields
+  if (!username || !email || !password) {
+    return res.status(400).json({ error: 'Username, email, and password are required' });
+  }
+
+  // Validate username length
+  if (username.length < 3) {
+    return res.status(400).json({ error: 'Username must be at least 3 characters long' });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  // Validate password length
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
   const verificationToken = crypto.randomBytes(32).toString('hex');
 
   try {
     const user = await prisma.user.create({
       data: {
+        username,
         email,
         password: hashedPassword,
         verification_token: verificationToken,
@@ -41,9 +64,14 @@ app.post('/api/register', async (req, res) => {
   } catch (err: any) {
     console.error('Register error:', err);
     
-    // Check if this is a unique constraint error (duplicate email)
-    if (err.code === 'P2002' && err.meta?.target?.includes('email')) {
-      return res.status(400).json({ error: 'This email is already registered.' });
+    // Check if this is a unique constraint error
+    if (err.code === 'P2002') {
+      if (err.meta?.target?.includes('email')) {
+        return res.status(400).json({ error: 'This email is already registered.' });
+      }
+      if (err.meta?.target?.includes('username')) {
+        return res.status(400).json({ error: 'This username is already taken.' });
+      }
     }
     
     // Check if this is an email sending error
@@ -102,14 +130,35 @@ app.get('/api/verify', async (req, res) => {
 // Login
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = await prisma.user.findUnique({ where: { email } });
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+
+  // Try to find user by email or username
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: email },
+        { username: email }
+      ]
+    }
+  });
+
   if (!user) return res.status(400).json({ error: 'Invalid credentials' });
   if (!user.is_verified) return res.status(400).json({ error: 'Email not verified' });
 
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(400).json({ error: 'Invalid credentials' });
 
-  res.json({ message: 'Login successful' });
+  res.json({ 
+    message: 'Login successful',
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email
+    }
+  });
 });
 
 // Basic route

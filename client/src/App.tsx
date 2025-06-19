@@ -1,7 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Register from './Register';
+import Login from './Login';
 import Verify from './Verify';
+import Dashboard from './pages/Dashboard';
 import logo from './logo.svg';
 import './App.css';
 
@@ -10,8 +12,10 @@ function App() {
     <Router>
       <Routes>
         <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/verify" element={<Verify />} />
-        {/* Add other routes here */}
+        <Route path="/dashboard/*" element={<Dashboard />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <div className="App">
         <header className="App-header">
