@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import api from './api'; // Import the centralized api instance
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -9,10 +9,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check if user is already logged in
+  // Check if user is already logged in by checking for the token
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    if (isLoggedIn) {
+    const token = localStorage.getItem('token');
+    if (token) {
       navigate('/dashboard');
     }
   }, [navigate]);
@@ -23,13 +23,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5001/api/login', {
+      const response = await api.post('/login', {
         email,
         password
       });
       
-      // Store the user's login state (you might want to use a proper auth state management solution later)
-      localStorage.setItem('isLoggedIn', 'true');
+      // Store the token and user info
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       
       // Redirect to dashboard or home page
       navigate('/dashboard');

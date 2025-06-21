@@ -6,8 +6,11 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    // Add any other cleanup (remove tokens, etc.)
+    // Clear token and user data from storage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Navigate to the login page
     navigate('/login');
   };
 
