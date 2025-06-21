@@ -1,10 +1,11 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { prisma } from './db';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { sendVerificationEmail } from './email';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
 
 // Load environment variables
 dotenv.config();
@@ -132,7 +133,7 @@ app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ error: 'Email/Username and password are required' });
   }
 
   // Try to find user by email or username
@@ -146,19 +147,75 @@ app.post('/api/login', async (req, res) => {
   });
 
   if (!user) return res.status(400).json({ error: 'Invalid credentials' });
-  if (!user.is_verified) return res.status(400).json({ error: 'Email not verified' });
+  if (!user.is_verified) return res.status(400).json({ error: 'Please verify your email before logging in.' });
 
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(400).json({ error: 'Invalid credentials' });
 
+  // User is authenticated, create JWT
+  const token = jwt.sign(
+    { userId: user.id, username: user.username },
+    process.env.JWT_SECRET as string,
+    { expiresIn: '24h' } // Token expires in 24 hours
+  );
+
   res.json({ 
     message: 'Login successful',
+    token,
     user: {
       id: user.id,
       username: user.username,
       email: user.email
     }
   });
+});
+
+// Auth Middleware
+interface AuthRequest extends Request {
+  user?: { userId: number; username: string };
+}
+
+const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+    req.user = decoded as { userId: number; username: string };
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  }
+};
+
+// A protected route to test authentication
+app.get('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  // Thanks to the middleware, we know req.user is defined.
+  const userId = req.user?.userId;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        is_verified: true,
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
 });
 
 // Basic route

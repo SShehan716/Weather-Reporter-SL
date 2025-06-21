@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from './api';
 import styles from './Register.module.css';
 
 interface FormErrors {
@@ -21,6 +21,14 @@ export default function Register() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [message, setMessage] = useState({ type: '', text: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   const validateForm = () => {
     const newErrors: FormErrors = {};
@@ -70,7 +78,7 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      const res = await axios.post('http://localhost:5001/api/register', {
+      const res = await api.post('/register', {
         username: formData.username,
         email: formData.email,
         password: formData.password
