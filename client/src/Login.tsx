@@ -1,135 +1,139 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from './api'; // Import the centralized api instance
 
-export default function Login() {
-  const [email, setEmail] = useState('');
+const Login = () => {
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  // Check if user is already logged in by checking for the token
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      navigate('/dashboard');
-    }
-  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
     try {
-      const response = await api.post('/login', {
-        email,
-        password
-      });
-      
-      // Store the token and user info
+      const response = await api.post('/login', { identifier, password });
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Redirect to dashboard or home page
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
+      setError(err.response?.data?.error || 'Failed to login');
     }
   };
 
+  const backgroundImageUrl = 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+
   return (
     <div style={{
+      minHeight: '100vh',
+      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${backgroundImageUrl})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
+      color: 'white',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '20px'
     }}>
-      <div style={{
-        maxWidth: '400px',
-        width: '100%',
+      <nav style={{
         padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        backgroundColor: '#fff'
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Login</h2>
-        
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <div>
-            <label htmlFor="email" style={{ display: 'block', marginBottom: '5px' }}>Email or Username</label>
-            <input
-              type="text"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="Enter your email or username"
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ddd'
-              }}
-            />
-          </div>
+        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+          Weather Reporter
+        </div>
+        <Link to="/" style={{
+          color: 'white',
+          textDecoration: 'none',
+          padding: '8px 16px',
+          border: '2px solid white',
+          borderRadius: '6px',
+          transition: 'all 0.3s ease'
+        }}>
+          Back to Home
+        </Link>
+      </nav>
 
-          <div>
-            <label htmlFor="password" style={{ display: 'block', marginBottom: '5px' }}>Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ddd'
-              }}
-            />
-          </div>
-
-          {error && (
-            <div style={{
-              color: '#dc3545',
-              padding: '10px',
-              borderRadius: '4px',
-              backgroundColor: '#ffe6e6',
-              marginBottom: '10px'
-            }}>
-              {error}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexGrow: 1,
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '12px',
+          padding: '40px',
+          width: '100%',
+          maxWidth: '400px',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
+          <h2 style={{ textAlign: 'center', marginBottom: '24px' }}>Login</h2>
+          {error && <p style={{ color: '#ff8a80', textAlign: 'center' }}>{error}</p>}
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '16px' }}>
+              <label htmlFor="identifier" style={{ display: 'block', marginBottom: '8px' }}>Username or Email</label>
+              <input
+                type="text"
+                id="identifier"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  fontSize: '16px'
+                }}
+              />
             </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: '10px',
-              backgroundColor: '#007bff',
-              color: '#fff',
+            <div style={{ marginBottom: '24px' }}>
+              <label htmlFor="password" style={{ display: 'block', marginBottom: '8px' }}>Password</label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  fontSize: '16px'
+                }}
+              />
+            </div>
+            <button type="submit" style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '6px',
               border: 'none',
-              borderRadius: '4px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1
-            }}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <p>Don't have an account? <Link to="/register" style={{ color: '#007bff' }}>Register here</Link></p>
+              backgroundColor: '#1976D2',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'background-color 0.3s ease'
+            }}>
+              Login
+            </button>
+          </form>
+          <p style={{ textAlign: 'center', marginTop: '16px' }}>
+            Don't have an account? <Link to="/register" style={{ color: '#82b1ff' }}>Register here</Link>
+          </p>
         </div>
       </div>
     </div>
   );
-} 
+};
+
+export default Login; 

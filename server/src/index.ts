@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { sendVerificationEmail } from './email';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 
 // Load environment variables
 dotenv.config();
@@ -130,9 +131,9 @@ app.get('/api/verify', async (req, res) => {
 
 // Login
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { identifier, password } = req.body;
   
-  if (!email || !password) {
+  if (!identifier || !password) {
     return res.status(400).json({ error: 'Email/Username and password are required' });
   }
 
@@ -140,8 +141,8 @@ app.post('/api/login', async (req, res) => {
   const user = await prisma.user.findFirst({
     where: {
       OR: [
-        { email: email },
-        { username: email }
+        { email: identifier },
+        { username: identifier }
       ]
     }
   });
@@ -215,6 +216,66 @@ app.get('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) 
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Weather API endpoint
+app.get('/api/weather', async (req, res) => {
+  try {
+    const weatherApiKey = process.env.WEATHER_API_KEY;
+    if (!weatherApiKey) {
+      return res.status(500).json({ error: 'Weather API key not configured' });
+    }
+
+    // Get location from query parameters, default to Colombo
+    const location = typeof req.query.location === 'string' ? req.query.location : 'Colombo';
+    const url = `http://api.weatherapi.com/v1/current.json?key=${weatherApiKey}&q=${encodeURIComponent(location)}&aqi=no`;
+
+    const response = await axios.get(url);
+    const weatherData = response.data;
+
+    // Extract the required weather information
+    const weather = {
+      location: {
+        name: weatherData.location.name,
+        country: weatherData.location.country,
+        localtime: weatherData.location.localtime,
+        region: weatherData.location.region || null,
+        lat: weatherData.location.lat,
+        lon: weatherData.location.lon
+      },
+      current: {
+        temperature: {
+          celsius: weatherData.current.temp_c,
+          fahrenheit: weatherData.current.temp_f
+        },
+        humidity: weatherData.current.humidity,
+        windSpeed: {
+          kph: weatherData.current.wind_kph,
+          mph: weatherData.current.wind_mph
+        },
+        uvIndex: weatherData.current.uv,
+        condition: {
+          text: weatherData.current.condition.text,
+          icon: weatherData.current.condition.icon
+        },
+        feelsLike: {
+          celsius: weatherData.current.feelslike_c,
+          fahrenheit: weatherData.current.feelslike_f
+        }
+      }
+    };
+
+    res.json(weather);
+  } catch (error: any) {
+    console.error('Weather API error:', error);
+    if (error.response?.status === 400) {
+      return res.status(400).json({ error: 'Location not found. Please check the spelling and try again.' });
+    }
+    if (error.response?.status === 401) {
+      return res.status(500).json({ error: 'Invalid weather API key' });
+    }
+    res.status(500).json({ error: 'Failed to fetch weather data' });
   }
 });
 
