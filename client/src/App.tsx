@@ -4,6 +4,7 @@ import Register from './Register';
 import Login from './Login';
 import Verify from './Verify';
 import Dashboard from './pages/Dashboard';
+import PublicWeather from './pages/PublicWeather';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -11,6 +12,7 @@ function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<PublicWeather />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/verify" element={<Verify />} />
@@ -22,7 +24,6 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

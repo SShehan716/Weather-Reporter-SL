@@ -1,10 +1,18 @@
 import React from 'react';
+import Weather from '../components/Weather';
 
 export default function DashboardHome() {
   return (
     <div>
       <h1 style={{ marginBottom: '20px' }}>Welcome to Weather Reporter</h1>
       
+      {/* Weather Section */}
+      <div style={{ marginBottom: '30px' }}>
+        <h2 style={{ marginBottom: '20px', color: '#333' }}>Current Weather - Colombo</h2>
+        <Weather />
+      </div>
+
+      {/* Dashboard Cards */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',

@@ -1,113 +1,131 @@
 .container {
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: white;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #f5f5f5;
 }
 
-.formCard {
-  background: white;
-  padding: 2rem;
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.nav {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   width: 100%;
-  max-width: 400px;
+  box-sizing: border-box;
+}
+
+.appName {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.navLink {
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border: 2px solid white;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.navLink:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.formContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  padding: 20px;
+}
+
+.formWrapper {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 450px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .title {
-  color: #333;
   text-align: center;
-  margin-bottom: 2rem;
-  font-size: 1.8rem;
+  margin-bottom: 24px;
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.inputGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.label {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.input {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.input:focus {
-  outline: none;
-  border-color: #61dafb;
+.error, .success {
+  text-align: center;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 16px;
 }
 
 .error {
-  color: #dc3545;
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
+  background-color: rgba(255, 138, 128, 0.3);
+  color: #ff8a80;
+}
+
+.success {
+  background-color: rgba(129, 212, 250, 0.3);
+  color: #81d4fa;
+}
+
+.inputGroup {
+  margin-bottom: 16px;
+}
+
+.inputGroup label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.inputGroup input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 16px;
+}
+
+.inputGroup input:focus {
+  outline: none;
+  border-color: #82b1ff;
+  box-shadow: 0 0 0 3px rgba(130, 177, 255, 0.3);
 }
 
 .submitButton {
-  background-color: #61dafb;
-  color: white;
-  padding: 0.75rem;
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
   border: none;
-  border-radius: 5px;
-  font-size: 1rem;
+  background-color: #1976D2;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 1rem;
+  transition: background-color 0.3s ease;
 }
 
 .submitButton:hover {
-  background-color: #3fa8d9;
-}
-
-.submitButton:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.message {
-  text-align: center;
-  margin-top: 1rem;
-  padding: 0.75rem;
-  border-radius: 5px;
-}
-
-.successMessage {
-  composes: message;
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.errorMessage {
-  composes: message;
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #1565C0;
 }
 
 .loginLink {
   text-align: center;
-  margin-top: 1rem;
-  color: #666;
+  margin-top: 16px;
 }
 
 .loginLink a {
-  color: #61dafb;
+  color: #82b1ff;
   text-decoration: none;
+  font-weight: bold;
 }
 
 .loginLink a:hover {
