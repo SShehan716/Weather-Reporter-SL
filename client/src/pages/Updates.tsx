@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
+import styles from './Updates.module.css';
 
 interface WeatherUpdate {
   id: number;
@@ -20,7 +21,7 @@ export default function Updates() {
 
   const fetchUpdates = async () => {
     try {
-      const response = await axios.get('http://localhost:5001/api/weather-updates');
+      const response = await api.get('/weather-updates');
       setUpdates(response.data);
       setLoading(false);
     } catch (err) {
@@ -29,12 +30,14 @@ export default function Updates() {
     }
   };
 
-  const deleteUpdate = async (id: number) => {
-    try {
-      await axios.delete(`http://localhost:5001/api/weather-updates/${id}`);
-      setUpdates(updates.filter(update => update.id !== id));
-    } catch (err) {
-      setError('Failed to delete update');
+  const handleDelete = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this update?')) {
+      try {
+        await api.delete(`/weather-updates/${id}`);
+        setUpdates(updates.filter(update => update.id !== id));
+      } catch (error) {
+        console.error('Failed to delete update:', error);
+      }
     }
   };
 
@@ -116,7 +119,7 @@ export default function Updates() {
                     borderRadius: '4px',
                     cursor: 'pointer'
                   }}
-                  onClick={() => deleteUpdate(update.id)}
+                  onClick={() => handleDelete(update.id)}
                 >
                   Delete
                 </button>

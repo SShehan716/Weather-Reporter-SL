@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { useLoadScript } from '@react-google-maps/api';
 import GoogleMapsAutocomplete from '../components/GoogleMapsAutocomplete';
 import Map from '../components/Map';
 import WeatherIcon from '../components/WeatherIcons';
+import api from '../api';
 import './PublicWeather.css';
 
 interface WeatherData {
@@ -38,8 +37,6 @@ interface WeatherData {
   };
 }
 
-const libraries: ('places')[] = ['places'];
-
 export default function PublicWeather() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,11 +46,6 @@ export default function PublicWeather() {
   const [searchQuery, setSearchQuery] = useState('Colombo');
   const [mapCenter, setMapCenter] = useState({ lat: 6.9271, lng: 79.8612 }); // Default to Colombo
 
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY as string,
-    libraries,
-  });
-
   useEffect(() => {
     fetchWeather(locationToFetch);
   }, [locationToFetch]);
@@ -62,7 +54,7 @@ export default function PublicWeather() {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.get(`http://localhost:5001/api/weather?location=${encodeURIComponent(location)}`);
+      const response = await api.get(`/weather?location=${encodeURIComponent(location)}`);
       setWeather(response.data);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch weather data');
@@ -238,21 +230,15 @@ export default function PublicWeather() {
           maxWidth: '500px',
           border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
-          {loadError && <div>Error loading maps. Please check your API key.</div>}
-          {!isLoaded && <div>Loading Maps...</div>}
-          {isLoaded && (
-            <>
-              <GoogleMapsAutocomplete
-                onPlaceSelected={handlePlaceSelected}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onSearch={setLocationToFetch}
-              />
-              <div style={{ marginTop: '20px' }}>
-                <Map center={mapCenter} />
-              </div>
-            </>
-          )}
+          <GoogleMapsAutocomplete
+            onPlaceSelected={handlePlaceSelected}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onSearch={setLocationToFetch}
+          />
+          <div style={{ marginTop: '20px' }}>
+            <Map center={mapCenter} />
+          </div>
         </div>
 
         {/* Location and Time */}

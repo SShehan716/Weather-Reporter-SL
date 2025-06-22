@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import api from './api';
 
 export default function Verify() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -19,7 +19,7 @@ export default function Verify() {
           return;
         }
 
-        const response = await axios.get(`http://localhost:5001/api/verify?token=${token}`);
+        const response = await api.get(`/verify?token=${token}`);
         setStatus('success');
         setMessage(response.data.message);
         

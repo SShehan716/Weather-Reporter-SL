@@ -1,5 +1,4 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { prisma } from './db';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
@@ -7,6 +6,7 @@ import { sendVerificationEmail } from './email';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import { UserModel } from './models/User';
 
 // Load environment variables
 dotenv.config();
@@ -25,11 +25,11 @@ app.use(express.json());
 
 // Register
 app.post('/api/register', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, country } = req.body;
   
   // Validate required fields
-  if (!username || !email || !password) {
-    return res.status(400).json({ error: 'Username, email, and password are required' });
+  if (!username || !email || !password || !country) {
+    return res.status(400).json({ error: 'Username, email, password, and country are required' });
   }
 
   // Validate username length
@@ -52,13 +52,12 @@ app.post('/api/register', async (req, res) => {
   const verificationToken = crypto.randomBytes(32).toString('hex');
 
   try {
-    const user = await prisma.user.create({
-      data: {
-        username,
-        email,
-        password: hashedPassword,
-        verification_token: verificationToken,
-      },
+    const user = await UserModel.create({
+      username,
+      email,
+      password: hashedPassword,
+      verification_token: verificationToken,
+      country,
     });
     const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
     await sendVerificationEmail(email, verificationLink);
@@ -97,29 +96,16 @@ app.get('/api/verify', async (req, res) => {
       return res.status(400).json({ error: 'Invalid verification token' });
     }
 
-    // Try to find and update the user
-    const updateResult = await prisma.user.updateMany({
-      where: { 
-        verification_token: token,
-        is_verified: false  // Only verify if not already verified
-      },
-      data: { 
-        is_verified: true,
-        verification_token: null
-      }
-    });
+    const wasVerified = await UserModel.verify(token);
 
-    if (updateResult.count === 0) {
-      // Check if user was already verified
-      const user = await prisma.user.findFirst({
-        where: { verification_token: token }
-      });
-
-      if (user?.is_verified) {
-        return res.status(400).json({ error: 'Email was already verified' });
-      }
-
-      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    if (!wasVerified) {
+        // To provide a more specific error, we can check if the user exists but was already verified.
+        // This adds a DB call, but improves UX. Consider if this is a performance concern.
+        const user = await UserModel.findByVerificationToken(token);
+        if (user?.is_verified) {
+             return res.status(400).json({ error: 'Email was already verified' });
+        }
+        return res.status(400).json({ error: 'Invalid or expired verification token' });
     }
 
     res.json({ message: 'Email verified successfully! You can now log in.' });
@@ -137,15 +123,7 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ error: 'Email/Username and password are required' });
   }
 
-  // Try to find user by email or username
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: identifier },
-        { username: identifier }
-      ]
-    }
-  });
+  const user = await UserModel.findByIdentifier(identifier);
 
   if (!user) return res.status(400).json({ error: 'Invalid credentials' });
   if (!user.is_verified) return res.status(400).json({ error: 'Please verify your email before logging in.' });
@@ -157,7 +135,7 @@ app.post('/api/login', async (req, res) => {
   const token = jwt.sign(
     { userId: user.id, username: user.username },
     process.env.JWT_SECRET as string,
-    { expiresIn: '24h' } // Token expires in 24 hours
+    { expiresIn: '24h' }
   );
 
   res.json({ 
@@ -196,19 +174,14 @@ const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => 
 
 // A protected route to test authentication
 app.get('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
-  // Thanks to the middleware, we know req.user is defined.
   const userId = req.user?.userId;
 
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        is_verified: true,
-      }
-    });
+    const user = await UserModel.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -216,6 +189,32 @@ app.get('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) 
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Update Profile
+app.put('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const { username, country } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Basic validation
+  if (!username || username.length < 3) {
+    return res.status(400).json({ error: 'Username must be at least 3 characters long.' });
+  }
+  
+  try {
+    const updatedUser = await UserModel.update(userId, { username, country });
+    res.json({ message: 'Profile updated successfully', user: updatedUser });
+  } catch (error: any) {
+    if (error.code === 'P2002') { // Unique constraint violation
+        return res.status(409).json({ error: 'This username is already taken.' });
+    }
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 

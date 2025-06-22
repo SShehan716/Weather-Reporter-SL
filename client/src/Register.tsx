@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './Register.module.css';
+import CountryAutocomplete from './components/CountryAutocomplete';
+import api from './api'; // Import the centralized api instance
 
 const Register = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [country, setCountry] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
@@ -17,20 +20,22 @@ const Register = () => {
       setError('Passwords do not match');
       return;
     }
+    if (!country) {
+      setError('Please select your country');
+      return;
+    }
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
+      // Use the centralized api instance
+      await api.post('/register', {
+        username,
+        email,
+        password,
+        country,
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to register');
-      }
-      setSuccess('Registration successful! Redirecting to login...');
-      setTimeout(() => navigate('/login'), 2000);
+      setSuccess('Registration successful! Please check your email to verify your account. Redirecting to login...');
+      setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.error || 'Failed to register');
     }
   };
   
@@ -72,6 +77,15 @@ const Register = () => {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label htmlFor="country">Country</label>
+              <CountryAutocomplete
+                value={country}
+                onChange={setCountry}
+                placeholder="Search for your country..."
                 required
               />
             </div>
