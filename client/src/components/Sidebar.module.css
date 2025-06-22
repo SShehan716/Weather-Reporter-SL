@@ -1,52 +1,134 @@
 .sidebar {
-  width: 250px;
-  height: 100vh;
-  background-color: #1a1a1a;
-  color: white;
-  padding: 20px;
+  width: 260px;
+  background-color: #0F172A;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid #1F2937;
   position: fixed;
-  left: 0;
+  height: 100vh;
   top: 0;
+  left: 0;
+  transition: width 0.3s ease-in-out;
 }
 
-.title {
-  margin-bottom: 40px;
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
 }
 
-.titleText {
-  color: #61dafb;
-  margin-bottom: 10px;
+.logo {
+  font-size: 1.75rem;
+  font-weight: bold;
+  color: white;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.5rem;
 }
 
 .navLink {
-  color: white;
+  color: #9CA3AF;
   text-decoration: none;
-  padding: 10px;
-  border-radius: 5px;
-  transition: background-color 0.2s;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
 }
 
 .navLink:hover {
-  background-color: #333;
+  background-color: #1F2937;
+  color: white;
+}
+
+.navLink.active {
+  background-color: #1D4ED8;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.navLink, .logoutButton {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .logoutButton {
-  background-color: #dc3545;
-  color: white;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #312E81;
+  color: #A5B4FC;
   border: none;
-  padding: 10px;
-  border-radius: 5px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  margin-top: auto;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s ease-in-out;
+  margin-bottom: 80px;
 }
 
 .logoutButton:hover {
-  background-color: #c82333;
-} 
+  background-color: #4338CA;
+  color: white;
+}
+
+.toggleButton {
+  background: none;
+  border: none;
+  color: #9CA3AF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.3s ease-in-out;
+}
+
+.toggleButton:hover {
+  color: white;
+}
+
+.sidebar.collapsed .toggleButton {
+  transform: rotate(0deg);
+}
+
+.sidebar:not(.collapsed) .toggleButton {
+  transform: rotate(180deg);
+}
+
+/* Collapsed Styles */
+.sidebar.collapsed {
+  width: 88px;
+  padding: 1.5rem 1rem;
+}
+
+.sidebar.collapsed .header {
+  justify-content: center;
+}
+
+.sidebar.collapsed .logo {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .navLinkText,
+.sidebar.collapsed .logoutText {
+  display: none;
+}
+
+.sidebar.collapsed .navLink,
+.sidebar.collapsed .logoutButton {
+  justify-content: center;
+}
+
+.sidebar.collapsed .logoutButton span {
+  display: none;
+}
