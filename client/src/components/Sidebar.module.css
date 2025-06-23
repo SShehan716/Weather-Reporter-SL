@@ -132,3 +132,9 @@
 .sidebar.collapsed .logoutButton span {
   display: none;
 }
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none !important;
+  }
+}
