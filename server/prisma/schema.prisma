@@ -18,6 +18,7 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   weatherUpdates     WeatherUpdate[]
+  riskUpdates        RiskUpdate[]
 }
 
 model WeatherUpdate {
@@ -27,6 +28,18 @@ model WeatherUpdate {
   lon          Float
   temperature  Float
   conditions   String
+  createdAt    DateTime @default(now())
+  author       User     @relation(fields: [authorId], references: [id])
+  authorId     Int
+}
+
+model RiskUpdate {
+  id           Int      @id @default(autoincrement())
+  locationName String
+  lat          Float
+  lon          Float
+  disasterType String
+  imageUrl     String
   createdAt    DateTime @default(now())
   author       User     @relation(fields: [authorId], references: [id])
   authorId     Int

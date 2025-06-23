@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api'; // Use the centralized api instance
 import CountryAutocomplete from '../components/CountryAutocomplete';
+import PageHeader from '../components/PageHeader';
 
 interface UserProfile {
   username: string;
@@ -80,8 +81,10 @@ const Profile = () => {
 
   return (
     <div>
-      <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>My Profile</h1>
-      <p style={{ fontSize: '1.125rem', color: '#9CA3AF', marginBottom: '2rem' }}>View and edit your personal information.</p>
+      <PageHeader 
+        title="My Profile"
+        description="View and manage your personal information and account settings."
+      />
       
       {updateSuccess && <div style={{ marginBottom: '1rem', padding: '1rem', borderRadius: '8px', backgroundColor: '#10B981', color: 'white' }}>Profile updated successfully!</div>}
       {updateError && <div style={{ marginBottom: '1rem', padding: '1rem', borderRadius: '8px', backgroundColor: '#EF4444', color: 'white' }}>{updateError}</div>}

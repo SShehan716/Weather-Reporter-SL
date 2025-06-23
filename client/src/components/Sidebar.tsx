@@ -51,10 +51,7 @@ const Sidebar = ({ isCollapsed, toggleCollapse }: SidebarProps) => {
             <DashboardIcon />
             <span className={styles.navLinkText}>Dashboard</span>
           </NavLink>
-          <NavLink to="/dashboard/profile" className={navLinkStyle}>
-            <ProfileIcon />
-            <span className={styles.navLinkText}>Profile</span>
-          </NavLink>
+
           <NavLink to="/dashboard/updates" className={navLinkStyle}>
             <UpdatesIcon />
             <span className={styles.navLinkText}>My Updates</span>
@@ -62,6 +59,10 @@ const Sidebar = ({ isCollapsed, toggleCollapse }: SidebarProps) => {
           <NavLink to="/dashboard/add-update" className={navLinkStyle}>
             <AddUpdateIcon />
             <span className={styles.navLinkText}>Add Updates</span>
+          </NavLink>
+          <NavLink to="/dashboard/profile" className={navLinkStyle}>
+            <ProfileIcon />
+            <span className={styles.navLinkText}>Profile</span>
           </NavLink>
         </nav>
       </div>

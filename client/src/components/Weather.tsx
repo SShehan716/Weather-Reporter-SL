@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import WeatherIcon from './WeatherIcons';
+import UpdateCard, { Update as NearbyUpdate } from './UpdateCard';
+import GoogleMapsAutocomplete from './GoogleMapsAutocomplete';
 
 interface WeatherData {
   location: {
@@ -40,17 +42,35 @@ export default function Weather() {
   const [unit, setUnit] = useState<'celsius' | 'fahrenheit'>('celsius');
   const [locationToFetch, setLocationToFetch] = useState('Colombo');
   const [searchQuery, setSearchQuery] = useState('Colombo');
+  const [localUpdates, setLocalUpdates] = useState<NearbyUpdate[]>([]);
 
   useEffect(() => {
     fetchWeather(locationToFetch);
   }, [locationToFetch]);
 
+  const fetchLocalUpdates = async (lat: number, lon: number) => {
+    try {
+      const response = await api.get('/nearby-updates', {
+        params: { lat, lon, radius: 50 }, // Increased radius to 50km for better matching
+      });
+      setLocalUpdates(response.data.updates);
+    } catch (error) {
+      console.error('Failed to fetch local updates:', error);
+      setLocalUpdates([]); // Clear on error
+    }
+  };
+
   const fetchWeather = async (location: string) => {
     try {
       setLoading(true);
       setError('');
+      setLocalUpdates([]); // Reset updates on new search
       const response = await api.get<WeatherData>(`/weather?location=${encodeURIComponent(location)}`);
       setWeather(response.data);
+      // After fetching weather, fetch local updates for the same location
+      if (response.data?.location) {
+        fetchLocalUpdates(response.data.location.lat, response.data.location.lon);
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch weather data');
     } finally {
@@ -58,9 +78,12 @@ export default function Weather() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocationToFetch(searchQuery);
+  const handlePlaceSelected = (place: google.maps.places.PlaceResult) => {
+    const locationName = place.name || place.formatted_address;
+    if (locationName) {
+      setSearchQuery(locationName);
+      setLocationToFetch(locationName);
+    }
   };
 
   const getUvLevel = (uv: number) => {
@@ -100,16 +123,14 @@ export default function Weather() {
     <div>
       <h2 style={{ marginBottom: '20px', color: '#E5E7EB', fontWeight: 'bold', fontSize: '1.5rem' }}>Weather Lookup</h2>
       
-      <form onSubmit={handleSearch} style={{ marginBottom: '20px', maxWidth: '500px', display: 'flex', gap: '10px' }}>
-        <input
-          type="text"
+      <div style={{ marginBottom: '20px', maxWidth: '500px' }}>
+        <GoogleMapsAutocomplete 
+          onPlaceSelected={handlePlaceSelected}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Enter a city or zip code"
-          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #374151', backgroundColor: '#1F2937', color: 'white', fontSize: '16px' }}
+          onSearch={() => setLocationToFetch(searchQuery)}
         />
-        <button type="submit" style={{ padding: '12px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#1D4ED8', color: 'white', fontSize: '16px', cursor: 'pointer' }}>Search</button>
-      </form>
+      </div>
       
       <>
         {/* Header */}
@@ -169,6 +190,24 @@ export default function Weather() {
             <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{weather.current.uvIndex} <span style={{fontSize: '16px', opacity: 0.9}}>({uvInfo.level})</span></p>
           </div>
         </div>
+
+        {/* Local Updates Section */}
+        {localUpdates.length > 0 && (
+          <div style={{ marginTop: '24px' }}>
+            <h3 style={{ color: '#E5E7EB', marginBottom: '1rem' }}>
+              Local Updates for {weather.location.name}
+            </h3>
+            <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem', backgroundColor: '#1F2937', borderRadius: '12px' }}>
+              {localUpdates.map(update => (
+                <UpdateCard 
+                  key={`${update.type}-${update.id}`} 
+                  update={update} 
+                  style={{ flex: '0 0 280px' }} 
+                />
+              ))}
+            </div>
+          </div>
+        )}
       
         <div style={{ marginTop: '24px', textAlign: 'center' }}>
           <button onClick={() => fetchWeather(locationToFetch)} disabled={loading} style={{ backgroundColor: '#4F46E5', color: 'white', padding: '12px 24px', borderRadius: '8px', border: 'none', fontSize: '16px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', opacity: loading ? 0.6 : 1, transition: 'background-color 0.2s' }}>

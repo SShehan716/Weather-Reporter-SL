@@ -1,133 +1,104 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import styles from './Updates.module.css';
+import Spinner from '../components/Spinner';
+import UpdateCard, { Update as AnyUpdate } from '../components/UpdateCard';
+import PageHeader from '../components/PageHeader';
 
-interface WeatherUpdate {
-  id: number;
-  location: string;
-  temperature: number;
-  conditions: string;
-  timestamp: string;
-}
+// Type definitions for the combined updates are now imported
 
 export default function Updates() {
-  const [updates, setUpdates] = useState<WeatherUpdate[]>([]);
+  const [updates, setUpdates] = useState<AnyUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
-    fetchUpdates();
-  }, []);
-
-  const fetchUpdates = async () => {
-    try {
-      const response = await api.get('/weather-updates');
-      setUpdates(response.data);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch updates');
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this update?')) {
+    const fetchUpdates = async (page: number) => {
+      setLoading(true);
+      setError('');
       try {
-        await api.delete(`/weather-updates/${id}`);
-        setUpdates(updates.filter(update => update.id !== id));
-      } catch (error) {
-        console.error('Failed to delete update:', error);
+        const response = await api.get('/all-updates', {
+          params: { page },
+        });
+        // The raw query returns BigInt for count, ensure fields are correct type
+        const formattedUpdates = response.data.updates.map((u: any) => ({
+            ...u,
+            temperature: u.temperature ? parseFloat(u.temperature) : null,
+        }))
+        setUpdates(formattedUpdates);
+        setTotalPages(response.data.totalPages);
+      } catch (err) {
+        setError('Failed to fetch your updates. Please try again later.');
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
+    };
+
+    fetchUpdates(currentPage);
+  }, [currentPage]);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div style={{ color: '#dc3545' }}>{error}</div>;
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1>My Weather Updates</h1>
-        <button
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-          onClick={() => {/* Add new update logic */}}
-        >
-          Add New Update
-        </button>
-      </div>
+    <div className={styles.updatesPage}>
+      <PageHeader 
+        title="My Updates"
+        description="View and manage all the weather and risk updates you have posted."
+      />
 
-      <div style={{ display: 'grid', gap: '20px' }}>
-        {updates.length === 0 ? (
-          <div style={{
-            padding: '20px',
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            textAlign: 'center'
-          }}>
-            No updates yet. Add your first weather update!
-          </div>
-        ) : (
-          updates.map(update => (
-            <div
-              key={update.id}
-              style={{
-                backgroundColor: 'white',
-                padding: '20px',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <div>
-                <h3>{update.location}</h3>
-                <p>Temperature: {update.temperature}°C</p>
-                <p>Conditions: {update.conditions}</p>
-                <p style={{ color: '#666' }}>
-                  {new Date(update.timestamp).toLocaleString()}
-                </p>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  style={{
-                    padding: '8px 15px',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => {/* Edit update logic */}}
-                >
-                  Edit
-                </button>
-                <button
-                  style={{
-                    padding: '8px 15px',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => handleDelete(update.id)}
-                >
-                  Delete
-                </button>
-              </div>
+      {loading && <div className={styles.loading}><Spinner /></div>}
+      {error && <div className={styles.error}>{error}</div>}
+      
+      {!loading && !error && (
+        <>
+          {updates.length === 0 ? (
+            <div className={styles.emptyState}>
+              You haven't posted any updates yet.
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            <div className={styles.updatesGrid}>
+              {updates.map(update => (
+                <UpdateCard key={`${update.type}-${update.id}`} update={update} />
+              ))}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+             <div className={styles.paginationControls}>
+                <button 
+                  onClick={handlePrevPage} 
+                  disabled={currentPage === 1}
+                  className={styles.paginationButton}
+                >
+                  Previous
+                </button>
+                <span className={styles.pageInfo}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  onClick={handleNextPage} 
+                  disabled={currentPage === totalPages}
+                  className={styles.paginationButton}
+                >
+                  Next
+                </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 } 

@@ -2,26 +2,33 @@
     padding: 2rem;
     max-width: 800px;
     margin: 0 auto;
+    color: #e0e0e0;
 }
 
-.title {
+.header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #374151;
+}
+  
+.header h1 {
     font-size: 2.5rem;
     font-weight: bold;
-    margin-bottom: 0.5rem;
-    color: #1F2937;
+    margin: 0;
+    color: #F9FAFB;
 }
-
-.subtitle {
+  
+.header p {
     font-size: 1.125rem;
-    color: #6B7280;
-    margin-bottom: 2rem;
+    color: #9CA3AF;
+    margin-top: 0.5rem;
+    max-width: 600px;
 }
 
 .form {
-    background-color: white;
+    background-color: #1F2937;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .formGroup {
@@ -31,30 +38,62 @@
 .formGroup label {
     display: block;
     font-weight: 500;
-    color: #374151;
+    color: #D1D5DB;
     margin-bottom: 0.5rem;
 }
 
-.formGroup input {
+.formGroup input,
+.formGroup select {
     width: 100%;
     padding: 0.75rem 1rem;
-    border: 1px solid #D1D5DB;
+    border: 1px solid #374151;
+    background-color: #111827;
     border-radius: 8px;
     font-size: 1rem;
-    box-sizing: border-box; /* Important for padding and width to work together */
+    box-sizing: border-box;
+    color: #F9FAFB;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5);
+}
+
+.formGroup input[type="file"] {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+}
+
+.formGroup input[type="file"]::file-selector-button {
+    background-color: #374151;
+    border: 1px solid #4B5563;
+    color: #F9FAFB;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+  
+.formGroup input[type="file"]::file-selector-button:hover {
+    background-color: #4B5563;
 }
 
 .submitButton {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.85rem;
     border: none;
     border-radius: 8px;
     background-color: #4F46E5;
     color: white;
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s;
+    margin-top: 1rem;
 }
 
 .submitButton:hover {
@@ -63,16 +102,47 @@
 
 .errorMessage,
 .successMessage {
+    text-align: center;
     padding: 1rem;
     border-radius: 8px;
     margin-bottom: 1.5rem;
     color: white;
+    font-weight: 500;
 }
 
 .errorMessage {
-    background-color: #EF4444;
+    background-color: rgba(239, 68, 68, 0.4);
+    border: 1px solid #EF4444;
 }
 
 .successMessage {
-    background-color: #10B981;
+    background-color: rgba(16, 185, 129, 0.4);
+    border: 1px solid #10B981;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #374151;
+}
+
+.tabButton {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #9CA3AF;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.tabButton:hover {
+    color: #D1D5DB;
+}
+
+.activeTab {
+    color: #A5B4FC;
+    border-bottom: 2px solid #A5B4FC;
 } 

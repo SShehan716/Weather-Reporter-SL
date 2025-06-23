@@ -2,41 +2,87 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Weather from '../components/Weather';
 import api from '../api';
+import UpdateCard, { Update as NearbyUpdate } from '../components/UpdateCard';
+import PageHeader from '../components/PageHeader';
 
-const Card = ({ to, title, description, icon }: { to: string, title: string, description: string, icon: React.ReactNode }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const cardStyle = {
-    backgroundColor: '#1F2937',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    textDecoration: 'none',
-    color: 'white',
-    display: 'block',
-    transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-    transform: isHovered ? 'translateY(-5px)' : 'translateY(0)',
-    boxShadow: isHovered ? '0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  };
+const NearbyUpdates = () => {
+  const [updates, setUpdates] = useState<NearbyUpdate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchNearbyUpdates = async () => {
+      try {
+        // The backend now determines location based on user's country
+        const response = await api.get('/nearby-updates', {
+          params: {
+            radius: 50 // 50km radius
+          }
+        });
+        setUpdates(response.data.updates);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch nearby updates');
+        setLoading(false);
+      }
+    };
+
+    fetchNearbyUpdates();
+  }, []);
+
+  if (loading) return <div style={{ color: '#9CA3AF', textAlign: 'center', padding: '1rem' }}>Loading nearby updates...</div>;
+  if (error) return <div style={{ color: '#EF4444', textAlign: 'center', padding: '1rem' }}>{error}</div>;
+
+  if (updates.length === 0) {
+    return (
+      <div style={{
+        backgroundColor: '#1F2937',
+        borderRadius: '12px',
+        padding: '2rem',
+        marginBottom: '2rem',
+        textAlign: 'center'
+      }}>
+        <h3 style={{ marginBottom: '1rem', color: '#E5E7EB' }}>Nearby Updates</h3>
+        <p style={{ color: '#9CA3AF' }}>No updates found in your area yet.</p>
+      </div>
+    );
+  }
 
   return (
-    <Link 
-      to={to} 
-      style={cardStyle} 
-      onMouseEnter={() => setIsHovered(true)} 
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-        {icon}
-        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>{title}</h3>
+    <div style={{
+      backgroundColor: '#1F2937',
+      borderRadius: '12px',
+      padding: '2rem',
+      marginBottom: '2rem'
+    }}>
+      <h3 style={{ marginBottom: '1.5rem', color: '#E5E7EB', fontSize: '1.5rem' }}>Nearby Updates</h3>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+        gap: '1rem'
+      }}>
+        {updates.slice(0, 6).map((update) => (
+          <UpdateCard key={`${update.type}-${update.id}`} update={update} />
+        ))}
       </div>
-      <p style={{ margin: 0, color: '#9CA3AF' }}>{description}</p>
-    </Link>
+      
+      {updates.length > 6 && (
+        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <Link 
+            to="/dashboard/updates" 
+            style={{ 
+              color: '#3B82F6', 
+              textDecoration: 'none',
+              fontSize: '0.875rem'
+            }}
+          >
+            View all updates →
+          </Link>
+        </div>
+      )}
+    </div>
   );
 };
-
-// Simple SVG Icons
-const UpdatesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>;
-const ProfileIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
-const ActionsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-8m0-4V4m8 8h-8m-4 0H4"/></svg>;
 
 const DashboardHome = () => {
   const [username, setUsername] = useState('');
@@ -55,8 +101,10 @@ const DashboardHome = () => {
 
   return (
     <div>
-      <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Welcome back, {username}!</h1>
-      <p style={{ fontSize: '1.125rem', color: '#9CA3AF', marginBottom: '2rem' }}>Here's the weather forecast for today.</p>
+      <PageHeader 
+        title={`Welcome back, ${username}!`}
+        description="Here's a snapshot of the current weather and recent updates in your area."
+      />
       
       <div style={{
         backgroundColor: '#1F2937',
@@ -68,30 +116,8 @@ const DashboardHome = () => {
         <Weather />
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '20px',
-      }}>
-        <Card 
-          to="/dashboard/updates" 
-          title="Recent Updates" 
-          description="View and manage your weather updates"
-          icon={<UpdatesIcon />}
-        />
-        <Card 
-          to="/dashboard/profile" 
-          title="Profile" 
-          description="Manage your account settings"
-          icon={<ProfileIcon />}
-        />
-        <Card 
-          to="#" 
-          title="Quick Actions" 
-          description="Add new weather update or view statistics"
-          icon={<ActionsIcon />}
-        />
-      </div>
+      <NearbyUpdates />
+
     </div>
   );
 };
