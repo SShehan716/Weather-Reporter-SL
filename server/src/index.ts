@@ -7,7 +7,9 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import { UserModel } from './models/User';
-import { prisma } from './db';
+import { WeatherUpdateModel } from './models/WeatherUpdate';
+import { RiskUpdateModel } from './models/RiskUpdate';
+import { UpdateModel } from './models/Update';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
@@ -251,15 +253,13 @@ app.post('/api/weather-updates', authMiddleware, async (req: AuthRequest, res: R
   }
 
   try {
-    const newUpdate = await prisma.weatherUpdate.create({
-      data: {
-        locationName,
-        lat,
-        lon,
-        temperature,
-        conditions,
-        authorId: userId,
-      },
+    const newUpdate = await WeatherUpdateModel.create({
+      locationName,
+      lat,
+      lon,
+      temperature,
+      conditions,
+      authorId: userId,
     });
     res.status(201).json(newUpdate);
   } catch (error) {
@@ -288,15 +288,13 @@ app.post('/api/risk-updates', authMiddleware, upload.single('image'), async (req
   const imageUrl = req.file.path;
 
   try {
-    await prisma.riskUpdate.create({
-      data: {
-        locationName,
-        lat: parseFloat(lat),
-        lon: parseFloat(lon),
-        disasterType,
-        imageUrl,
-        authorId: userId,
-      },
+    await RiskUpdateModel.create({
+      locationName,
+      lat: parseFloat(lat),
+      lon: parseFloat(lon),
+      disasterType,
+      imageUrl,
+      authorId: userId,
     });
     res.status(201).json({ message: 'Risk update created successfully', imageUrl });
   } catch (error) {
@@ -310,44 +308,14 @@ app.get('/api/all-updates', authMiddleware, async (req: AuthRequest, res: Respon
   const userId = req.user?.userId;
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = 10;
-  const offset = (page - 1) * pageSize;
-
+  
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
-    const updates = await prisma.$queryRaw`
-      SELECT wu.id, wu."locationName", wu.temperature, wu.conditions, null as "disasterType", null as "imageUrl", wu."createdAt", 'general' as type, u.username as "authorName"
-      FROM "WeatherUpdate" as wu
-      JOIN "User" as u ON wu."authorId" = u.id
-      WHERE wu."authorId" = ${userId}
-      UNION ALL
-      SELECT ru.id, ru."locationName", null as temperature, null as conditions, ru."disasterType", ru."imageUrl", ru."createdAt", 'risk' as type, u.username as "authorName"
-      FROM "RiskUpdate" as ru
-      JOIN "User" as u ON ru."authorId" = u.id
-      WHERE ru."authorId" = ${userId}
-      ORDER BY "createdAt" DESC
-      LIMIT ${pageSize}
-      OFFSET ${offset}
-    `;
-
-    const totalUpdatesResult = await prisma.$queryRaw<[{ count: BigInt }]>`
-      SELECT SUM(total) as count FROM (
-        SELECT COUNT(*) as total FROM "WeatherUpdate" WHERE "authorId" = ${userId}
-        UNION ALL
-        SELECT COUNT(*) as total FROM "RiskUpdate" WHERE "authorId" = ${userId}
-      ) as "counts"
-    `;
-    
-    const totalUpdates = Number(totalUpdatesResult[0].count);
-    const totalPages = Math.ceil(totalUpdates / pageSize);
-
-    res.json({
-      updates,
-      totalPages,
-      currentPage: page,
-    });
+    const result = await UpdateModel.findAllByAuthorId(userId, page, pageSize);
+    res.json(result);
   } catch (error) {
     console.error('Failed to fetch all updates:', error);
     res.status(500).json({ error: 'Failed to fetch updates.' });
@@ -364,64 +332,26 @@ app.get('/api/nearby-updates', authMiddleware, async (req: AuthRequest, res: Res
   }
 
   try {
-    let userLat: number;
-    let userLon: number;
+    let updates;
     let userCountry: string | null = null;
+    let searchLocation: { lat: number; lon: number } | null = null;
 
     if (lat && lon) {
-      userLat = parseFloat(lat as string);
-      userLon = parseFloat(lon as string);
+      const parsedLat = parseFloat(lat as string);
+      const parsedLon = parseFloat(lon as string);
+      const parsedRadius = parseFloat(radius as string);
+      updates = await UpdateModel.findNearby(parsedLat, parsedLon, parsedRadius);
+      searchLocation = { lat: parsedLat, lon: parsedLon };
     } else {
-      // Fallback to user's profile country (for Dashboard)
       const user = await UserModel.findById(userId);
       if (!user || !user.country) {
         return res.json({ updates: [], userCountry: null, searchLocation: null });
       }
-      
-      const countryUpdates = await prisma.$queryRaw`
-        SELECT
-          wu.id, wu."locationName", wu.temperature, wu.conditions, null as "disasterType", null as "imageUrl", wu."createdAt", 'general' as type, wu.lat, wu.lon, u.username as "authorName", null as distance
-        FROM "WeatherUpdate" as wu JOIN "User" as u ON wu."authorId" = u.id
-        WHERE wu."locationName" ILIKE ${'%' + user.country + '%'}
-        UNION ALL
-        SELECT
-          ru.id, ru."locationName", null as temperature, null as conditions, ru."disasterType", ru."imageUrl", ru."createdAt", 'risk' as type, ru.lat, ru.lon, u.username as "authorName", null as distance
-        FROM "RiskUpdate" as ru JOIN "User" as u ON ru."authorId" = u.id
-        WHERE ru."locationName" ILIKE ${'%' + user.country + '%'}
-        ORDER BY "createdAt" DESC
-        LIMIT 20
-      `;
-
-      return res.json({ 
-        updates: countryUpdates,
-        userCountry: user.country,
-        searchLocation: null // No specific lat/lon for country-wide search
-      });
+      userCountry = user.country;
+      updates = await UpdateModel.findAllByCountry(userCountry);
     }
-
-    const searchRadius = parseFloat(radius as string);
-
-    const nearbyUpdates = await prisma.$queryRaw`
-      SELECT
-        wu.id, wu."locationName", wu.temperature, wu.conditions, null as "disasterType", null as "imageUrl", wu."createdAt", 'general' as type, wu.lat, wu.lon, u.username as "authorName",
-        (6371 * acos(cos(radians(${userLat})) * cos(radians(wu.lat)) * cos(radians(wu.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(wu.lat)))) as distance
-      FROM "WeatherUpdate" as wu JOIN "User" as u ON wu."authorId" = u.id
-      WHERE (6371 * acos(cos(radians(${userLat})) * cos(radians(wu.lat)) * cos(radians(wu.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(wu.lat)))) <= ${searchRadius}
-      UNION ALL
-      SELECT
-        ru.id, ru."locationName", null as temperature, null as conditions, ru."disasterType", ru."imageUrl", ru."createdAt", 'risk' as type, ru.lat, ru.lon, u.username as "authorName",
-        (6371 * acos(cos(radians(${userLat})) * cos(radians(ru.lat)) * cos(radians(ru.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(ru.lat)))) as distance
-      FROM "RiskUpdate" as ru JOIN "User" as u ON ru."authorId" = u.id
-      WHERE (6371 * acos(cos(radians(${userLat})) * cos(radians(ru.lat)) * cos(radians(ru.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(ru.lat)))) <= ${searchRadius}
-      ORDER BY distance ASC, "createdAt" DESC
-      LIMIT 20
-    `;
-
-    res.json({ 
-      updates: nearbyUpdates,
-      userCountry: userCountry,
-      searchLocation: { lat: userLat, lon: userLon }
-    });
+    
+    res.json({ updates, userCountry, searchLocation });
   } catch (error) {
     console.error('Failed to fetch nearby updates:', error);
     res.status(500).json({ error: 'Failed to fetch nearby updates.' });
