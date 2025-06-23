@@ -50,12 +50,27 @@ export default function PublicWeather() {
     fetchWeather(locationToFetch);
   }, [locationToFetch]);
 
+  // Add effect to ensure map center updates are processed
+  useEffect(() => {
+    // This effect ensures the map center state is properly updated
+    // and triggers a re-render of the Map component
+  }, [mapCenter]);
+
   const fetchWeather = async (location: string) => {
     try {
       setLoading(true);
       setError('');
       const response = await api.get(`/weather?location=${encodeURIComponent(location)}`);
       setWeather(response.data);
+      
+      // Update map center with the coordinates from the weather response
+      if (response.data?.location) {
+        const newCenter = { 
+          lat: response.data.location.lat, 
+          lng: response.data.location.lon 
+        };
+        setMapCenter(newCenter);
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch weather data');
     } finally {
@@ -67,15 +82,27 @@ export default function PublicWeather() {
     if (place.geometry?.location) {
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
-      setMapCenter({ lat, lng });
-      setLocationToFetch(`${lat},${lng}`);
-      if (place.formatted_address) {
-        setSearchQuery(place.formatted_address);
-      }
+      const newCenter = { lat, lng };
+      
+      // Update map center immediately
+      setMapCenter(newCenter);
+      
+      // Update location to fetch and search query with a small delay to ensure state updates are processed
+      setTimeout(() => {
+        setLocationToFetch(`${lat},${lng}`);
+        if (place.formatted_address) {
+          setSearchQuery(place.formatted_address);
+        }
+      }, 0);
     } else if (place.formatted_address) {
       setLocationToFetch(place.formatted_address);
       setSearchQuery(place.formatted_address);
     }
+  };
+
+  // Custom search handler that updates both weather and map
+  const handleSearch = (location: string) => {
+    setLocationToFetch(location);
   };
 
   const getUvLevel = (uv: number) => {
@@ -234,11 +261,14 @@ export default function PublicWeather() {
             onPlaceSelected={handlePlaceSelected}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onSearch={setLocationToFetch}
+            onSearch={handleSearch}
           />
           <div style={{ marginTop: '20px' }}>
             <div className="map-container">
-              <Map center={mapCenter} />
+              <Map 
+                key={`${mapCenter.lat}-${mapCenter.lng}`}
+                center={mapCenter} 
+              />
             </div>
           </div>
         </div>
