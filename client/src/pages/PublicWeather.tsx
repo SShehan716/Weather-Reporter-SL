@@ -219,7 +219,7 @@ export default function PublicWeather() {
         padding: '20px'
       }}>
         {/* Search Section */}
-        <div style={{
+        <div className="public-weather-card" style={{
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
           backdropFilter: 'blur(10px)',
           borderRadius: '12px',
@@ -237,7 +237,9 @@ export default function PublicWeather() {
             onSearch={setLocationToFetch}
           />
           <div style={{ marginTop: '20px' }}>
-            <Map center={mapCenter} />
+            <div className="map-container">
+              <Map center={mapCenter} />
+            </div>
           </div>
         </div>
 
@@ -271,7 +273,7 @@ export default function PublicWeather() {
         </div>
 
         {/* Main Weather Card */}
-        <div style={{
+        <div className="public-weather-card" style={{
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
           backdropFilter: 'blur(10px)',
           borderRadius: '20px',

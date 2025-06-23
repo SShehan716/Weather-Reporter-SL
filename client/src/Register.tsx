@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import styles from './Register.module.css';
 import CountryAutocomplete from './components/CountryAutocomplete';
 import api from './api'; // Import the centralized api instance
+import Spinner from './components/Spinner';
 
 const Register = () => {
   const [username, setUsername] = useState('');
@@ -12,6 +13,7 @@ const Register = () => {
   const [country, setCountry] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,8 +26,8 @@ const Register = () => {
       setError('Please select your country');
       return;
     }
+    setLoading(true);
     try {
-      // Use the centralized api instance
       await api.post('/register', {
         username,
         email,
@@ -36,6 +38,8 @@ const Register = () => {
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to register');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -44,7 +48,24 @@ const Register = () => {
   return (
     <div className={styles.container} style={{
       backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${backgroundImageUrl})`,
+      position: 'relative',
     }}>
+      {loading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Spinner />
+        </div>
+      )}
       <nav className={styles.nav}>
         <div className={styles.appName}>
           Weather Reporter

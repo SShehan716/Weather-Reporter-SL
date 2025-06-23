@@ -4,6 +4,8 @@ import Weather from '../components/Weather';
 import api from '../api';
 import UpdateCard, { Update as NearbyUpdate } from '../components/UpdateCard';
 import PageHeader from '../components/PageHeader';
+import styles from './AddUpdate.module.css';
+import Spinner from '../components/Spinner';
 
 const NearbyUpdates = () => {
   const [updates, setUpdates] = useState<NearbyUpdate[]>([]);
@@ -86,21 +88,28 @@ const NearbyUpdates = () => {
 
 const DashboardHome = () => {
   const [username, setUsername] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const response = await api.get('/profile');
         setUsername(response.data.username);
+        setLoading(false);
       } catch (error) {
         console.error('Failed to fetch username', error);
+        setLoading(false);
       }
     };
     fetchProfile();
   }, []);
 
+  if (loading) {
+    return <Spinner />;
+  }
+
   return (
-    <div>
+    <div className={styles.container}>
       <PageHeader 
         title={`Welcome back, ${username}!`}
         description="Here's a snapshot of the current weather and recent updates in your area."

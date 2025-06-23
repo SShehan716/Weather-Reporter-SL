@@ -5,6 +5,8 @@ import DashboardHome from './DashboardHome';
 import Profile from './Profile';
 import Updates from './Updates';
 import AddUpdate from './AddUpdate';
+import BottomNavBar from '../components/BottomNavBar';
+import styles from './AddUpdate.module.css';
 
 const Dashboard = () => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -13,12 +15,24 @@ const Dashboard = () => {
     setSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  const sidebarWidth = isSidebarCollapsed ? 88 : 260;
+  const sidebarWidth = isSidebarCollapsed ? 45 : 260;
 
   return (
     <div style={{ backgroundColor: '#111827', minHeight: '100vh', display: 'flex' }}>
       <Sidebar isCollapsed={isSidebarCollapsed} toggleCollapse={toggleSidebar} />
-      <main style={{ flexGrow: 1, padding: '2rem', color: 'white', overflowY: 'auto' }}>
+      <main
+        className={styles.mainContent}
+        style={{
+          flexGrow: 1,
+          padding: '2rem',
+          color: 'white',
+          overflowY: 'auto',
+          marginLeft: sidebarWidth,
+          transition: 'margin-left 0.3s',
+          minHeight: '100vh',
+          boxSizing: 'border-box',
+        }}
+      >
         <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
             <Routes>
                 <Route path="/" element={<Navigate to="home" replace />} />
@@ -29,6 +43,7 @@ const Dashboard = () => {
             </Routes>
         </div>
       </main>
+      <BottomNavBar />
     </div>
   );
 };

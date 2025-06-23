@@ -1,0 +1,69 @@
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 60px;
+  background: #0F172A;
+  border-top: 1px solid #1F2937;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 1000;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+}
+
+.bottomNav a {
+  color: #9CA3AF;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  flex: 1;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+
+.bottomNav a.active {
+  color: #3B82F6;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin-bottom: 2px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.logoutBtn {
+  background: none;
+  border: none;
+  color: #9CA3AF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  flex: 1;
+  padding: 4px 0;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+.logoutBtn:active, .logoutBtn:focus {
+  color: #EF4444;
+}
+.logoutBtn:hover {
+  color: #EF4444;
+}
+
+@media (min-width: 769px) {
+  .bottomNav {
+    display: none;
+  }
+} 

@@ -130,4 +130,30 @@
   .public-weather-card {
     padding: 15px;
   }
+}
+
+@media (max-width: 600px) {
+  .public-weather-main {
+    padding: 4px;
+  }
+  .public-weather-card {
+    padding: 15px !important;
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
+    border-radius: 10px;
+  }
+  .public-weather-nav {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+  }
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  .map-container {
+    margin: 0 4px 10px 4px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
 } 
