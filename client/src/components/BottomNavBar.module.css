@@ -42,6 +42,26 @@
   font-weight: 500;
 }
 
+.logoutBtn {
+  background: none;
+  border: none;
+  color: #9CA3AF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  flex: 1;
+  padding: 4px 0;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+.logoutBtn:active, .logoutBtn:focus {
+  color: #EF4444;
+}
+.logoutBtn:hover {
+  color: #EF4444;
+}
+
 @media (min-width: 769px) {
   .bottomNav {
     display: none;
