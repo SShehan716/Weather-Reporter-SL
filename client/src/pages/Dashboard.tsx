@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import DashboardHome from './DashboardHome';
 import Profile from './Profile';
 import Updates from './Updates';
+import AddUpdate from './AddUpdate';
 
 const Dashboard = () => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -24,6 +25,7 @@ const Dashboard = () => {
                 <Route path="home" element={<DashboardHome />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="updates" element={<Updates />} />
+                <Route path="add-update" element={<AddUpdate />} />
             </Routes>
         </div>
       </main>

@@ -7,6 +7,7 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import { UserModel } from './models/User';
+import { prisma } from './db';
 
 // Load environment variables
 dotenv.config();
@@ -215,6 +216,37 @@ app.put('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) 
     }
     console.error('Profile update error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Create Weather Update
+app.post('/api/weather-updates', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const { locationName, lat, lon, temperature, conditions } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!locationName || lat === undefined || lon === undefined || temperature === undefined || !conditions) {
+    return res.status(400).json({ error: 'Location name, coordinates, temperature, and conditions are required.' });
+  }
+
+  try {
+    const newUpdate = await prisma.weatherUpdate.create({
+      data: {
+        locationName,
+        lat,
+        lon,
+        temperature,
+        conditions,
+        authorId: userId,
+      },
+    });
+    res.status(201).json(newUpdate);
+  } catch (error) {
+    console.error('Failed to create weather update:', error);
+    res.status(500).json({ error: 'Failed to create weather update.' });
   }
 });
 
