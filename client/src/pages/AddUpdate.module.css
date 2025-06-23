@@ -146,4 +146,44 @@
 .activeTab {
     color: #A5B4FC;
     border-bottom: 2px solid #A5B4FC;
+}
+
+@media (max-width: 900px) {
+  .container {
+    max-width: 100%;
+    padding: 1rem 0.5rem;
+  }
+  .form {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 0.5rem 0.25rem;
+  }
+  .form {
+    padding: 0.5rem;
+  }
+  .header h1 {
+    font-size: 1.5rem;
+  }
+  .header p {
+    font-size: 1rem;
+  }
+}
+
+/* Make update cards horizontally scrollable on mobile */
+@media (max-width: 700px) {
+  .updatesGrid, .nearbyUpdatesGrid {
+    display: flex !important;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+  .updateCard {
+    min-width: 260px;
+    flex: 0 0 260px;
+  }
 } 
