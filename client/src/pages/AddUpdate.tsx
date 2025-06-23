@@ -4,6 +4,7 @@ import api from '../api';
 import styles from './AddUpdate.module.css';
 import GoogleMapsAutocomplete from '../components/GoogleMapsAutocomplete';
 import PageHeader from '../components/PageHeader';
+import Spinner from '../components/Spinner';
 
 interface LocationData {
   name: string;
@@ -29,6 +30,7 @@ const AddUpdate = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const handleGeneralPlaceSelected = (place: google.maps.places.PlaceResult) => {
     if (place.geometry?.location) {
@@ -60,9 +62,11 @@ const AddUpdate = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
 
     if (!generalLocation.name || generalLocation.lat === null || !temperature || !conditions) {
       setError('All fields, including a valid location, are required.');
+      setLoading(false);
       return;
     }
 
@@ -78,6 +82,8 @@ const AddUpdate = () => {
       setTimeout(() => navigate('/dashboard/updates'), 2000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to add general update.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,9 +91,11 @@ const AddUpdate = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
 
     if (!riskLocation.name || riskLocation.lat === null || !disasterType || !image) {
       setError('All fields, including a valid location and image, are required.');
+      setLoading(false);
       return;
     }
 
@@ -108,6 +116,8 @@ const AddUpdate = () => {
       setTimeout(() => navigate('/dashboard/updates'), 2000); // Or a new risk updates page
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to upload risk update.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -164,6 +174,10 @@ const AddUpdate = () => {
       <button type="submit" className={styles.submitButton}>Add Risk Update</button>
     </form>
   );
+
+  if (loading) {
+    return <Spinner />;
+  }
 
   return (
     <div className={styles.container}>

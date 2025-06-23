@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../api'; // Use the centralized api instance
 import CountryAutocomplete from '../components/CountryAutocomplete';
 import PageHeader from '../components/PageHeader';
+import styles from './AddUpdate.module.css';
+import Spinner from '../components/Spinner';
 
 interface UserProfile {
   username: string;
@@ -58,7 +60,7 @@ const Profile = () => {
   };
 
   if (loading) {
-    return <div>Loading profile...</div>;
+    return <Spinner />;
   }
 
   if (error) {
@@ -80,7 +82,7 @@ const Profile = () => {
   };
 
   return (
-    <div>
+    <div className={styles.container}>
       <PageHeader 
         title="My Profile"
         description="View and manage your personal information and account settings."

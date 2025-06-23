@@ -1,8 +1,9 @@
 .container {
     padding: 2rem;
-    max-width: 800px;
     margin: 0 auto;
     color: #e0e0e0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .header {

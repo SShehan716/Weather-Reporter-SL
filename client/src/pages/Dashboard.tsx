@@ -13,12 +13,19 @@ const Dashboard = () => {
     setSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  const sidebarWidth = isSidebarCollapsed ? 88 : 260;
+  const sidebarWidth = isSidebarCollapsed ? 45 : 260;
 
   return (
     <div style={{ backgroundColor: '#111827', minHeight: '100vh', display: 'flex' }}>
       <Sidebar isCollapsed={isSidebarCollapsed} toggleCollapse={toggleSidebar} />
-      <main style={{ flexGrow: 1, padding: '2rem', color: 'white', overflowY: 'auto' }}>
+      <main style={{
+        flexGrow: 1,
+        padding: '2rem',
+        color: 'white',
+        overflowY: 'auto',
+        marginLeft: sidebarWidth,
+        transition: 'margin-left 0.3s',
+      }}>
         <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
             <Routes>
                 <Route path="/" element={<Navigate to="home" replace />} />
