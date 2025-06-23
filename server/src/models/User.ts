@@ -1,8 +1,75 @@
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  password: string;
-  is_verified: boolean;
-  verification_token?: string | null;
+import { prisma } from '../db';
+import { User as PrismaUser } from '@prisma/client';
+
+export type UserProfile = Omit<PrismaUser, 'password' | 'verification_token' | 'is_verified'>;
+
+export class UserModel {
+  // Find a user by either email or username
+  static async findByIdentifier(identifier: string): Promise<PrismaUser | null> {
+    return prisma.user.findFirst({
+      where: {
+        OR: [{ email: identifier }, { username: identifier }],
+      },
+    });
+  }
+
+  // Find a user by their ID
+  static async findById(id: number): Promise<UserProfile | null> {
+    return prisma.user.findUnique({
+      where: { id: id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        country: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+  
+  // Find a user by their verification token
+  static async findByVerificationToken(token: string): Promise<PrismaUser | null> {
+    return prisma.user.findFirst({
+      where: { verification_token: token },
+    });
+  }
+
+  // Create a new user
+  static async create(data: Omit<PrismaUser, 'id' | 'createdAt' | 'updatedAt' | 'is_verified'>): Promise<PrismaUser> {
+    return prisma.user.create({
+      data,
+    });
+  }
+
+  // Verify a user's email
+  static async verify(token: string): Promise<boolean> {
+    const result = await prisma.user.updateMany({
+      where: {
+        verification_token: token,
+        is_verified: false,
+      },
+      data: {
+        is_verified: true,
+        verification_token: null,
+      },
+    });
+    return result.count > 0;
+  }
+
+  // Update a user's profile
+  static async update(id: number, data: { username: string; country?: string }): Promise<UserProfile> {
+    return prisma.user.update({
+      where: { id: id },
+      data,
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        country: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
 } 

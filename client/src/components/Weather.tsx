@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import WeatherIcon from './WeatherIcons';
+import UpdateCard, { Update as NearbyUpdate } from './UpdateCard';
+import GoogleMapsAutocomplete from './GoogleMapsAutocomplete';
 
 interface WeatherData {
   location: {
@@ -39,19 +42,35 @@ export default function Weather() {
   const [unit, setUnit] = useState<'celsius' | 'fahrenheit'>('celsius');
   const [locationToFetch, setLocationToFetch] = useState('Colombo');
   const [searchQuery, setSearchQuery] = useState('Colombo');
+  const [localUpdates, setLocalUpdates] = useState<NearbyUpdate[]>([]);
 
   useEffect(() => {
-    if (locationToFetch) {
-      fetchWeather(locationToFetch);
-    }
+    fetchWeather(locationToFetch);
   }, [locationToFetch]);
+
+  const fetchLocalUpdates = async (lat: number, lon: number) => {
+    try {
+      const response = await api.get('/nearby-updates', {
+        params: { lat, lon, radius: 50 }, // Increased radius to 50km for better matching
+      });
+      setLocalUpdates(response.data.updates);
+    } catch (error) {
+      console.error('Failed to fetch local updates:', error);
+      setLocalUpdates([]); // Clear on error
+    }
+  };
 
   const fetchWeather = async (location: string) => {
     try {
       setLoading(true);
       setError('');
+      setLocalUpdates([]); // Reset updates on new search
       const response = await api.get<WeatherData>(`/weather?location=${encodeURIComponent(location)}`);
       setWeather(response.data);
+      // After fetching weather, fetch local updates for the same location
+      if (response.data?.location) {
+        fetchLocalUpdates(response.data.location.lat, response.data.location.lon);
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch weather data');
     } finally {
@@ -59,9 +78,12 @@ export default function Weather() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocationToFetch(searchQuery);
+  const handlePlaceSelected = (place: google.maps.places.PlaceResult) => {
+    const locationName = place.name || place.formatted_address;
+    if (locationName) {
+      setSearchQuery(locationName);
+      setLocationToFetch(locationName);
+    }
   };
 
   const getUvLevel = (uv: number) => {
@@ -74,14 +96,7 @@ export default function Weather() {
 
   if (loading && !weather) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '200px',
-        fontSize: '18px',
-        color: '#666'
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', fontSize: '18px', color: '#666' }}>
         Loading weather data...
       </div>
     );
@@ -89,26 +104,9 @@ export default function Weather() {
 
   if (error) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '200px',
-        color: '#dc3545'
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#dc3545' }}>
         <div style={{ marginBottom: '10px' }}>Error: {error}</div>
-        <button
-          onClick={() => fetchWeather(locationToFetch)}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
+        <button onClick={() => fetchWeather(locationToFetch)} style={{ padding: '8px 16px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
           Retry
         </button>
       </div>
@@ -116,230 +114,108 @@ export default function Weather() {
   }
 
   if (!weather) {
-    return <div>No weather data available</div>;
+    return <div>No weather data available.</div>;
   }
-
+  
   const uvInfo = getUvLevel(weather.current.uvIndex);
 
   return (
-    <div style={{ padding: '0px' }}>
+    <div>
       <h2 style={{ marginBottom: '20px', color: '#E5E7EB', fontWeight: 'bold', fontSize: '1.5rem' }}>Weather Lookup</h2>
       
-      {/* Search Section */}
-      <form onSubmit={handleSearch} style={{
-        marginBottom: '20px',
-        maxWidth: '500px',
-        display: 'flex',
-        gap: '10px'
-      }}>
-        <input
-          type="text"
+      <div style={{ marginBottom: '20px', maxWidth: '500px' }}>
+        <GoogleMapsAutocomplete 
+          onPlaceSelected={handlePlaceSelected}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Enter a city or zip code"
-          style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '8px',
-            border: '1px solid #374151',
-            backgroundColor: '#1F2937',
-            color: 'white',
-            fontSize: '16px'
-          }}
+          onSearch={() => setLocationToFetch(searchQuery)}
         />
-        <button type="submit" style={{
-          padding: '12px 20px',
-          borderRadius: '8px',
-          border: 'none',
-          backgroundColor: '#1D4ED8',
-          color: 'white',
-          fontSize: '16px',
-          cursor: 'pointer'
-        }}>Search</button>
-      </form>
-
-      {/* Weather Display */}
-      {weather && (
-        <>
-          {/* Header */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px'
-          }}>
-            <div>
-              <h2 style={{ margin: '0 0 4px 0', color: '#E5E7EB', fontSize: '1.75rem' }}>
-                {weather.location.name}
-                {weather.location.region && `, ${weather.location.region}`}
-                {weather.location.country && `, ${weather.location.country}`}
-              </h2>
-              <p style={{ margin: '0', color: '#9CA3AF', fontSize: '14px' }}>
-                {new Date(weather.location.localtime).toLocaleString()}
-              </p>
-              <p style={{ 
-                margin: '4px 0 0 0', 
-                color: '#9CA3AF', 
-                fontSize: '12px'
-              }}>
-                Coordinates: {weather.location.lat.toFixed(2)}°N, {weather.location.lon.toFixed(2)}°E
-              </p>
-            </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <img 
-                src={weather.current.condition.icon} 
-                alt={weather.current.condition.text}
-                style={{ width: '50px', height: '50px' }}
-              />
-              <span style={{ color: '#9CA3AF', fontSize: '14px' }}>
-                {weather.current.condition.text}
-              </span>
-            </div>
-          </div>
-
-          {/* Temperature */}
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '24px',
-            padding: '20px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '16px',
-              marginBottom: '8px'
-            }}>
-              <span style={{
-                fontSize: '48px',
-                fontWeight: 'bold',
-                color: '#333'
-              }}>
-                {unit === 'celsius' 
-                  ? `${Math.round(weather.current.temperature.celsius)}°C`
-                  : `${Math.round(weather.current.temperature.fahrenheit)}°F`
-                }
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <button
-                  onClick={() => setUnit('celsius')}
-                  style={{
-                    padding: '4px 8px',
-                    backgroundColor: unit === 'celsius' ? '#007bff' : '#e9ecef',
-                    color: unit === 'celsius' ? 'white' : '#333',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px'
-                  }}
-                >
-                  °C
-                </button>
-                <button
-                  onClick={() => setUnit('fahrenheit')}
-                  style={{
-                    padding: '4px 8px',
-                    backgroundColor: unit === 'fahrenheit' ? '#007bff' : '#e9ecef',
-                    color: unit === 'fahrenheit' ? 'white' : '#333',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px'
-                  }}
-                >
-                  °F
-                </button>
-              </div>
-            </div>
-            <p style={{ margin: '0', color: '#666' }}>
-              Feels like {unit === 'celsius' 
-                ? `${Math.round(weather.current.feelsLike.celsius)}°C`
-                : `${Math.round(weather.current.feelsLike.fahrenheit)}°F`
-              }
+      </div>
+      
+      <>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{ margin: '0 0 4px 0', color: '#E5E7EB', fontSize: '1.75rem' }}>
+              {weather.location.name}, {weather.location.country}
+            </h2>
+            <p style={{ margin: '0', color: '#9CA3AF', fontSize: '14px' }}>
+              {new Date(weather.location.localtime).toLocaleString()}
             </p>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src={weather.current.condition.icon} alt={weather.current.condition.text} style={{ width: '50px', height: '50px' }}/>
+            <span style={{ color: '#9CA3AF', fontSize: '14px' }}>{weather.current.condition.text}</span>
+          </div>
+        </div>
 
-          {/* Weather Details Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '16px'
-          }}>
-            {/* Humidity */}
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#e3f2fd',
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontWeight: 'bold', color: '#333' }}>Humidity</div>
-              <div style={{ fontSize: '18px', color: '#666' }}>{weather.current.humidity}%</div>
-            </div>
-
-            {/* Wind Speed */}
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#f3e5f5',
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontWeight: 'bold', color: '#333' }}>Wind Speed</div>
-              <div style={{ fontSize: '18px', color: '#666' }}>
-                {unit === 'celsius' 
-                  ? `${weather.current.windSpeed.kph} km/h` 
-                  : `${weather.current.windSpeed.mph} mph`
-                }
+        {/* Temperature */}
+        <div style={{ textAlign: 'center', marginBottom: '24px', padding: '2rem', backgroundColor: '#1F2937', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '4rem', fontWeight: 'bold', color: 'white' }}>
+                {unit === 'celsius' ? `${Math.round(weather.current.temperature.celsius)}` : `${Math.round(weather.current.temperature.fahrenheit)}`}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignSelf: 'flex-start', paddingTop: '0.5rem' }}>
+                 <span style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white', lineHeight: '1' }}>
+                  °{unit === 'celsius' ? 'C' : 'F'}
+                </span>
+                <button
+                  onClick={() => setUnit(unit === 'celsius' ? 'fahrenheit' : 'celsius')}
+                  style={{ backgroundColor: 'transparent', color: '#9CA3AF', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0', lineHeight: '1' }}
+                >
+                  °{unit === 'celsius' ? 'F' : 'C'}
+                </button>
               </div>
             </div>
+            <span style={{ fontSize: '1.125rem', color: '#9CA3AF' }}>
+              Feels like {unit === 'celsius' ? `${Math.round(weather.current.feelsLike.celsius)}°C` : `${Math.round(weather.current.feelsLike.fahrenheit)}°F`}
+            </span>
+        </div>
 
-            {/* UV Index */}
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#fff3e0',
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontWeight: 'bold', color: '#333' }}>UV Index</div>
-              <div style={{ 
-                fontSize: '18px', 
-                color: uvInfo.color,
-                fontWeight: 'bold'
-              }}>
-                {weather.current.uvIndex} ({uvInfo.level})
-              </div>
+        {/* Other Info */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', textAlign: 'center' }}>
+          <div style={{ background: '#1e3a8a', color: 'white', padding: '20px', borderRadius: '12px' }}>
+            <WeatherIcon type="humidity" size={40} />
+            <h4 style={{ margin: '10px 0 5px 0' }}>Humidity</h4>
+            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{weather.current.humidity}%</p>
+          </div>
+          <div style={{ background: '#064e3b', color: 'white', padding: '20px', borderRadius: '12px' }}>
+            <WeatherIcon type="wind" size={40} />
+            <h4 style={{ margin: '10px 0 5px 0' }}>Wind Speed</h4>
+            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{weather.current.windSpeed.kph} km/h</p>
+          </div>
+          <div style={{ background: '#b45309', color: 'white', padding: '20px', borderRadius: '12px' }}>
+            <WeatherIcon type="uv" size={40} />
+            <h4 style={{ margin: '10px 0 5px 0' }}>UV Index</h4>
+            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{weather.current.uvIndex} <span style={{fontSize: '16px', opacity: 0.9}}>({uvInfo.level})</span></p>
+          </div>
+        </div>
+
+        {/* Local Updates Section */}
+        {localUpdates.length > 0 && (
+          <div style={{ marginTop: '24px' }}>
+            <h3 style={{ color: '#E5E7EB', marginBottom: '1rem' }}>
+              Local Updates for {weather.location.name}
+            </h3>
+            <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem', backgroundColor: '#1F2937', borderRadius: '12px' }}>
+              {localUpdates.map(update => (
+                <UpdateCard 
+                  key={`${update.type}-${update.id}`} 
+                  update={update} 
+                  style={{ flex: '0 0 280px' }} 
+                />
+              ))}
             </div>
           </div>
-          
-          {/* Refresh Button */}
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <button
-              onClick={() => fetchWeather(locationToFetch)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                margin: '0 auto'
-              }}
-            >
-              <span>Refresh Weather</span>
-            </button>
-          </div>
-        </>
-      )}
+        )}
+      
+        <div style={{ marginTop: '24px', textAlign: 'center' }}>
+          <button onClick={() => fetchWeather(locationToFetch)} disabled={loading} style={{ backgroundColor: '#4F46E5', color: 'white', padding: '12px 24px', borderRadius: '8px', border: 'none', fontSize: '16px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', opacity: loading ? 0.6 : 1, transition: 'background-color 0.2s' }}>
+            <WeatherIcon type="refresh" size={20} color="white" />
+            {loading ? 'Refreshing...' : 'Refresh Weather'}
+          </button>
+        </div>
+      </>
     </div>
   );
-} 
+}

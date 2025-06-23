@@ -1,5 +1,4 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { prisma } from './db';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
@@ -7,6 +6,36 @@ import { sendVerificationEmail } from './email';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import { UserModel } from './models/User';
+import { prisma } from './db';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import { Client } from "@googlemaps/google-maps-services-js";
+
+// --- Google Maps Client Setup ---
+const googleMapsClient = new Client({});
+const countryCoordCache = new Map<string, { lat: number; lon: number }>();
+// --- End Google Maps Client Setup ---
+
+// --- Cloudinary Setup ---
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'weather-reporter-risks',
+    format: async (req: Request, file: Express.Multer.File) => 'png',
+    public_id: (req: Request, file: Express.Multer.File) => 'risk-' + Date.now(),
+  } as any,
+});
+
+const upload = multer({ storage: storage });
+// --- End Cloudinary Setup ---
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +44,7 @@ dotenv.config();
 console.log('Environment variables loaded:');
 console.log('PORT:', process.env.PORT);
 console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('GOOGLE_MAPS_API_KEY available:', !!process.env.GOOGLE_MAPS_API_KEY);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -25,25 +55,21 @@ app.use(express.json());
 
 // Register
 app.post('/api/register', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, country } = req.body;
   
-  // Validate required fields
-  if (!username || !email || !password) {
-    return res.status(400).json({ error: 'Username, email, and password are required' });
+  if (!username || !email || !password || !country) {
+    return res.status(400).json({ error: 'Username, email, password, and country are required' });
   }
 
-  // Validate username length
   if (username.length < 3) {
     return res.status(400).json({ error: 'Username must be at least 3 characters long' });
   }
 
-  // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return res.status(400).json({ error: 'Invalid email format' });
   }
 
-  // Validate password length
   if (password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters long' });
   }
@@ -52,13 +78,12 @@ app.post('/api/register', async (req, res) => {
   const verificationToken = crypto.randomBytes(32).toString('hex');
 
   try {
-    const user = await prisma.user.create({
-      data: {
-        username,
-        email,
-        password: hashedPassword,
-        verification_token: verificationToken,
-      },
+    const user = await UserModel.create({
+      username,
+      email,
+      password: hashedPassword,
+      verification_token: verificationToken,
+      country,
     });
     const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
     await sendVerificationEmail(email, verificationLink);
@@ -66,7 +91,6 @@ app.post('/api/register', async (req, res) => {
   } catch (err: any) {
     console.error('Register error:', err);
     
-    // Check if this is a unique constraint error
     if (err.code === 'P2002') {
       if (err.meta?.target?.includes('email')) {
         return res.status(400).json({ error: 'This email is already registered.' });
@@ -76,14 +100,12 @@ app.post('/api/register', async (req, res) => {
       }
     }
     
-    // Check if this is an email sending error
     if (err.message === 'Failed to send verification email') {
       return res.status(500).json({ 
         error: 'Registration successful but failed to send verification email. Please contact support.' 
       });
     }
     
-    // Generic error
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 });
@@ -97,29 +119,14 @@ app.get('/api/verify', async (req, res) => {
       return res.status(400).json({ error: 'Invalid verification token' });
     }
 
-    // Try to find and update the user
-    const updateResult = await prisma.user.updateMany({
-      where: { 
-        verification_token: token,
-        is_verified: false  // Only verify if not already verified
-      },
-      data: { 
-        is_verified: true,
-        verification_token: null
-      }
-    });
+    const wasVerified = await UserModel.verify(token);
 
-    if (updateResult.count === 0) {
-      // Check if user was already verified
-      const user = await prisma.user.findFirst({
-        where: { verification_token: token }
-      });
-
-      if (user?.is_verified) {
-        return res.status(400).json({ error: 'Email was already verified' });
-      }
-
-      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    if (!wasVerified) {
+        const user = await UserModel.findByVerificationToken(token);
+        if (user?.is_verified) {
+             return res.status(400).json({ error: 'Email was already verified' });
+        }
+        return res.status(400).json({ error: 'Invalid or expired verification token' });
     }
 
     res.json({ message: 'Email verified successfully! You can now log in.' });
@@ -137,15 +144,7 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ error: 'Email/Username and password are required' });
   }
 
-  // Try to find user by email or username
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: identifier },
-        { username: identifier }
-      ]
-    }
-  });
+  const user = await UserModel.findByIdentifier(identifier);
 
   if (!user) return res.status(400).json({ error: 'Invalid credentials' });
   if (!user.is_verified) return res.status(400).json({ error: 'Please verify your email before logging in.' });
@@ -153,11 +152,10 @@ app.post('/api/login', async (req, res) => {
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(400).json({ error: 'Invalid credentials' });
 
-  // User is authenticated, create JWT
   const token = jwt.sign(
     { userId: user.id, username: user.username },
     process.env.JWT_SECRET as string,
-    { expiresIn: '24h' } // Token expires in 24 hours
+    { expiresIn: '24h' }
   );
 
   res.json({ 
@@ -196,19 +194,14 @@ const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => 
 
 // A protected route to test authentication
 app.get('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
-  // Thanks to the middleware, we know req.user is defined.
   const userId = req.user?.userId;
 
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        is_verified: true,
-      }
-    });
+    const user = await UserModel.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -216,6 +209,222 @@ app.get('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) 
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Update Profile
+app.put('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const { username, country } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!username || username.length < 3) {
+    return res.status(400).json({ error: 'Username must be at least 3 characters long.' });
+  }
+  
+  try {
+    const updatedUser = await UserModel.update(userId, { username, country });
+    res.json({ message: 'Profile updated successfully', user: updatedUser });
+  } catch (error: any) {
+    if (error.code === 'P2002') { 
+        return res.status(409).json({ error: 'This username is already taken.' });
+    }
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Create Weather Update
+app.post('/api/weather-updates', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const { locationName, lat, lon, temperature, conditions } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!locationName || lat === undefined || lon === undefined || temperature === undefined || !conditions) {
+    return res.status(400).json({ error: 'Location name, coordinates, temperature, and conditions are required.' });
+  }
+
+  try {
+    const newUpdate = await prisma.weatherUpdate.create({
+      data: {
+        locationName,
+        lat,
+        lon,
+        temperature,
+        conditions,
+        authorId: userId,
+      },
+    });
+    res.status(201).json(newUpdate);
+  } catch (error) {
+    console.error('Failed to create weather update:', error);
+    res.status(500).json({ error: 'Failed to create weather update.' });
+  }
+});
+
+// Create Risk Update
+app.post('/api/risk-updates', authMiddleware, upload.single('image'), async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const { locationName, lat, lon, disasterType } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'Image file is required.' });
+  }
+  
+  if (!locationName || lat === undefined || lon === undefined || !disasterType) {
+    return res.status(400).json({ error: 'Location, disaster type, and image are required.' });
+  }
+
+  const imageUrl = req.file.path;
+
+  try {
+    await prisma.riskUpdate.create({
+      data: {
+        locationName,
+        lat: parseFloat(lat),
+        lon: parseFloat(lon),
+        disasterType,
+        imageUrl,
+        authorId: userId,
+      },
+    });
+    res.status(201).json({ message: 'Risk update created successfully', imageUrl });
+  } catch (error) {
+    console.error('Failed to create risk update:', error);
+    res.status(500).json({ error: 'Failed to create risk update.' });
+  }
+});
+
+// Get All Updates (Paginated)
+app.get('/api/all-updates', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = 10;
+  const offset = (page - 1) * pageSize;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const updates = await prisma.$queryRaw`
+      SELECT wu.id, wu."locationName", wu.temperature, wu.conditions, null as "disasterType", null as "imageUrl", wu."createdAt", 'general' as type, u.username as "authorName"
+      FROM "WeatherUpdate" as wu
+      JOIN "User" as u ON wu."authorId" = u.id
+      WHERE wu."authorId" = ${userId}
+      UNION ALL
+      SELECT ru.id, ru."locationName", null as temperature, null as conditions, ru."disasterType", ru."imageUrl", ru."createdAt", 'risk' as type, u.username as "authorName"
+      FROM "RiskUpdate" as ru
+      JOIN "User" as u ON ru."authorId" = u.id
+      WHERE ru."authorId" = ${userId}
+      ORDER BY "createdAt" DESC
+      LIMIT ${pageSize}
+      OFFSET ${offset}
+    `;
+
+    const totalUpdatesResult = await prisma.$queryRaw<[{ count: BigInt }]>`
+      SELECT SUM(total) as count FROM (
+        SELECT COUNT(*) as total FROM "WeatherUpdate" WHERE "authorId" = ${userId}
+        UNION ALL
+        SELECT COUNT(*) as total FROM "RiskUpdate" WHERE "authorId" = ${userId}
+      ) as "counts"
+    `;
+    
+    const totalUpdates = Number(totalUpdatesResult[0].count);
+    const totalPages = Math.ceil(totalUpdates / pageSize);
+
+    res.json({
+      updates,
+      totalPages,
+      currentPage: page,
+    });
+  } catch (error) {
+    console.error('Failed to fetch all updates:', error);
+    res.status(500).json({ error: 'Failed to fetch updates.' });
+  }
+});
+
+// Get Nearby Updates (for dashboard or specific location)
+app.get('/api/nearby-updates', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const { lat, lon, radius = 50 } = req.query; 
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    let userLat: number;
+    let userLon: number;
+    let userCountry: string | null = null;
+
+    if (lat && lon) {
+      userLat = parseFloat(lat as string);
+      userLon = parseFloat(lon as string);
+    } else {
+      // Fallback to user's profile country (for Dashboard)
+      const user = await UserModel.findById(userId);
+      if (!user || !user.country) {
+        return res.json({ updates: [], userCountry: null, searchLocation: null });
+      }
+      
+      const countryUpdates = await prisma.$queryRaw`
+        SELECT
+          wu.id, wu."locationName", wu.temperature, wu.conditions, null as "disasterType", null as "imageUrl", wu."createdAt", 'general' as type, wu.lat, wu.lon, u.username as "authorName", null as distance
+        FROM "WeatherUpdate" as wu JOIN "User" as u ON wu."authorId" = u.id
+        WHERE wu."locationName" ILIKE ${'%' + user.country + '%'}
+        UNION ALL
+        SELECT
+          ru.id, ru."locationName", null as temperature, null as conditions, ru."disasterType", ru."imageUrl", ru."createdAt", 'risk' as type, ru.lat, ru.lon, u.username as "authorName", null as distance
+        FROM "RiskUpdate" as ru JOIN "User" as u ON ru."authorId" = u.id
+        WHERE ru."locationName" ILIKE ${'%' + user.country + '%'}
+        ORDER BY "createdAt" DESC
+        LIMIT 20
+      `;
+
+      return res.json({ 
+        updates: countryUpdates,
+        userCountry: user.country,
+        searchLocation: null // No specific lat/lon for country-wide search
+      });
+    }
+
+    const searchRadius = parseFloat(radius as string);
+
+    const nearbyUpdates = await prisma.$queryRaw`
+      SELECT
+        wu.id, wu."locationName", wu.temperature, wu.conditions, null as "disasterType", null as "imageUrl", wu."createdAt", 'general' as type, wu.lat, wu.lon, u.username as "authorName",
+        (6371 * acos(cos(radians(${userLat})) * cos(radians(wu.lat)) * cos(radians(wu.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(wu.lat)))) as distance
+      FROM "WeatherUpdate" as wu JOIN "User" as u ON wu."authorId" = u.id
+      WHERE (6371 * acos(cos(radians(${userLat})) * cos(radians(wu.lat)) * cos(radians(wu.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(wu.lat)))) <= ${searchRadius}
+      UNION ALL
+      SELECT
+        ru.id, ru."locationName", null as temperature, null as conditions, ru."disasterType", ru."imageUrl", ru."createdAt", 'risk' as type, ru.lat, ru.lon, u.username as "authorName",
+        (6371 * acos(cos(radians(${userLat})) * cos(radians(ru.lat)) * cos(radians(ru.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(ru.lat)))) as distance
+      FROM "RiskUpdate" as ru JOIN "User" as u ON ru."authorId" = u.id
+      WHERE (6371 * acos(cos(radians(${userLat})) * cos(radians(ru.lat)) * cos(radians(ru.lon) - radians(${userLon})) + sin(radians(${userLat})) * sin(radians(ru.lat)))) <= ${searchRadius}
+      ORDER BY distance ASC, "createdAt" DESC
+      LIMIT 20
+    `;
+
+    res.json({ 
+      updates: nearbyUpdates,
+      userCountry: userCountry,
+      searchLocation: { lat: userLat, lon: userLon }
+    });
+  } catch (error) {
+    console.error('Failed to fetch nearby updates:', error);
+    res.status(500).json({ error: 'Failed to fetch nearby updates.' });
   }
 });
 
@@ -227,14 +436,12 @@ app.get('/api/weather', async (req, res) => {
       return res.status(500).json({ error: 'Weather API key not configured' });
     }
 
-    // Get location from query parameters, default to Colombo
     const location = typeof req.query.location === 'string' ? req.query.location : 'Colombo';
     const url = `http://api.weatherapi.com/v1/current.json?key=${weatherApiKey}&q=${encodeURIComponent(location)}&aqi=no`;
 
     const response = await axios.get(url);
     const weatherData = response.data;
 
-    // Extract the required weather information
     const weather = {
       location: {
         name: weatherData.location.name,
