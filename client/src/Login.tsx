@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from './api'; // Import the centralized api instance
+import Spinner from './components/Spinner';
 
 const Login = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const response = await api.post('/login', { identifier, password });
       localStorage.setItem('token', response.data.token);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to login');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,7 +36,24 @@ const Login = () => {
       color: 'white',
       display: 'flex',
       flexDirection: 'column',
+      position: 'relative',
     }}>
+      {loading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Spinner />
+        </div>
+      )}
       <nav style={{
         padding: '20px',
         display: 'flex',
