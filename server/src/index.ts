@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { sendVerificationEmail } from './email';
+import { sendVerificationEmail, sendResetPasswordEmail } from './email';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
@@ -14,6 +14,7 @@ import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { Client } from "@googlemaps/google-maps-services-js";
+import cookieParser from 'cookie-parser';
 
 // --- Google Maps Client Setup ---
 const googleMapsClient = new Client({});
@@ -52,8 +53,20 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors({ origin: process.env.FRONTEND_URL }));
+app.use(cors({ 
+  origin: process.env.FRONTEND_URL, 
+  credentials: true 
+}));
 app.use(express.json());
+app.use(cookieParser());
+
+// Redirect HTTP to HTTPS in production (Heroku)
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect('https://' + req.headers.host + req.url);
+  }
+  next();
+});
 
 // Register
 app.post('/api/register', async (req, res) => {
@@ -86,6 +99,8 @@ app.post('/api/register', async (req, res) => {
       password: hashedPassword,
       verification_token: verificationToken,
       country,
+      reset_token: null,
+      reset_token_expiry: null,
     });
     const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
     await sendVerificationEmail(email, verificationLink);
@@ -157,12 +172,18 @@ app.post('/api/login', async (req, res) => {
   const token = jwt.sign(
     { userId: user.id, username: user.username },
     process.env.JWT_SECRET as string,
-    { expiresIn: '24h' }
+    { expiresIn: '7d' }
   );
+
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
+  });
 
   res.json({ 
     message: 'Login successful',
-    token,
     user: {
       id: user.id,
       username: user.username,
@@ -171,19 +192,62 @@ app.post('/api/login', async (req, res) => {
   });
 });
 
+// Logout
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+  res.json({ message: 'Logged out successfully' });
+});
+
+// Forgot Password
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const user = await UserModel.findByEmail(email);
+  if (!user) return res.status(200).json({ message: 'If that email is registered, a reset link has been sent.' });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+
+  await UserModel.setResetToken(user.id, token, expiry);
+
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  await sendResetPasswordEmail(email, resetLink);
+
+  res.json({ message: 'If that email is registered, a reset link has been sent.' });
+});
+
+// Reset Password
+app.post('/api/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token and new password are required' });
+
+  const user = await UserModel.findByResetToken(token);
+  if (!user || !user.reset_token_expiry || user.reset_token_expiry < new Date()) {
+    return res.status(400).json({ error: 'Invalid or expired token' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await UserModel.updatePasswordAndClearResetToken(user.id, hashedPassword);
+
+  res.json({ message: 'Password reset successful. You can now log in.' });
+});
+
 // Auth Middleware
 interface AuthRequest extends Request {
   user?: { userId: number; username: string };
 }
 
 const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies.token;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return res.status(401).json({ error: 'Unauthorized: No token provided' });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string);

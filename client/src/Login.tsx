@@ -8,14 +8,14 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await api.post('/login', { identifier, password });
-      localStorage.setItem('token', response.data.token);
+      await api.post('/login', { identifier, password });
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to login');
@@ -115,17 +115,17 @@ const Login = () => {
                 }}
               />
             </div>
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '24px', position: 'relative' }}>
               <label htmlFor="password" style={{ display: 'block', marginBottom: '8px' }}>Password</label>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 style={{
                   width: '100%',
-                  padding: '12px',
+                  padding: '12px 10px 12px 12px',
                   borderRadius: '6px',
                   border: '1px solid rgba(255, 255, 255, 0.3)',
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -133,6 +133,28 @@ const Login = () => {
                   fontSize: '16px'
                 }}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  top: 36,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'white',
+                  padding: 0
+                }}
+                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-5 0-9.27-3.11-11-7 1.21-2.73 3.29-5 6-6.32" /><path d="M1 1l22 22" /><path d="M9.53 9.53A3.5 3.5 0 0 0 12 15.5c1.38 0 2.63-.56 3.54-1.47" /></svg>
+                ) : (
+                  <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="7" /><circle cx="12" cy="12" r="3" /></svg>
+                )}
+              </button>
             </div>
             <button type="submit" style={{
               width: '100%',
@@ -150,6 +172,7 @@ const Login = () => {
             </button>
           </form>
           <p style={{ textAlign: 'center', marginTop: '16px' }}>
+            <Link to="/forgot-password" style={{ color: '#82b1ff', display: 'block', marginBottom: '8px' }}>Forgot your password?</Link>
             Don't have an account? <Link to="/register" style={{ color: '#82b1ff' }}>Register here</Link>
           </p>
         </div>

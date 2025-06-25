@@ -24,6 +24,8 @@ export class UserModel {
         country: true,
         createdAt: true,
         updatedAt: true,
+        reset_token: true,
+        reset_token_expiry: true,
       },
     });
   }
@@ -69,7 +71,35 @@ export class UserModel {
         country: true,
         createdAt: true,
         updatedAt: true,
+        reset_token: true,
+        reset_token_expiry: true,
       },
+    });
+  }
+
+  // Find a user by email
+  static async findByEmail(email: string): Promise<PrismaUser | null> {
+    return prisma.user.findUnique({ where: { email } });
+  }
+
+  // Set reset token and expiry
+  static async setResetToken(id: number, token: string, expiry: Date): Promise<PrismaUser> {
+    return prisma.user.update({
+      where: { id },
+      data: { reset_token: token, reset_token_expiry: expiry }
+    });
+  }
+
+  // Find a user by reset token
+  static async findByResetToken(token: string): Promise<PrismaUser | null> {
+    return prisma.user.findFirst({ where: { reset_token: token } });
+  }
+
+  // Update password and clear reset token
+  static async updatePasswordAndClearResetToken(id: number, hashedPassword: string): Promise<PrismaUser> {
+    return prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword, reset_token: null, reset_token_expiry: null }
     });
   }
 } 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import styles from './BottomNavBar.module.css';
 import LogoutDialog from './LogoutDialog';
+import api from '../api';
 
 const BottomNavBar = () => {
   const navigate = useNavigate();
@@ -11,8 +12,12 @@ const BottomNavBar = () => {
     setShowLogout(true);
   };
 
-  const confirmLogout = () => {
-    localStorage.removeItem('token');
+  const confirmLogout = async () => {
+    try {
+      await api.post('/logout');
+    } catch (e) {
+      // Optionally handle error
+    }
     setShowLogout(false);
     navigate('/login');
   };
