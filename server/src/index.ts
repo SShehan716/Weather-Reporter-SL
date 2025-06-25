@@ -52,6 +52,9 @@ console.log('GOOGLE_MAPS_API_KEY available:', !!process.env.GOOGLE_MAPS_API_KEY)
 const app = express();
 const port = process.env.PORT || 5000;
 
+// Trust proxy for Heroku/production
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors({ 
   origin: process.env.FRONTEND_URL, 
@@ -178,7 +181,7 @@ app.post('/api/login', async (req, res) => {
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
   });
 
@@ -197,7 +200,7 @@ app.post('/api/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   });
   res.json({ message: 'Logged out successfully' });
 });
