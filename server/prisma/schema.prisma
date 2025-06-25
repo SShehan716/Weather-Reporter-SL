@@ -19,6 +19,8 @@ model User {
   updatedAt          DateTime @updatedAt
   weatherUpdates     WeatherUpdate[]
   riskUpdates        RiskUpdate[]
+  reset_token        String?  @unique
+  reset_token_expiry DateTime?
 }
 
 model WeatherUpdate {

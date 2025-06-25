@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { sendVerificationEmail } from './email';
+import { sendVerificationEmail, sendResetPasswordEmail } from './email';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
@@ -99,6 +99,8 @@ app.post('/api/register', async (req, res) => {
       password: hashedPassword,
       verification_token: verificationToken,
       country,
+      reset_token: null,
+      reset_token_expiry: null,
     });
     const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
     await sendVerificationEmail(email, verificationLink);
@@ -198,6 +200,41 @@ app.post('/api/logout', (req, res) => {
     sameSite: 'strict',
   });
   res.json({ message: 'Logged out successfully' });
+});
+
+// Forgot Password
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const user = await UserModel.findByEmail(email);
+  if (!user) return res.status(200).json({ message: 'If that email is registered, a reset link has been sent.' });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+
+  await UserModel.setResetToken(user.id, token, expiry);
+
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  await sendResetPasswordEmail(email, resetLink);
+
+  res.json({ message: 'If that email is registered, a reset link has been sent.' });
+});
+
+// Reset Password
+app.post('/api/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token and new password are required' });
+
+  const user = await UserModel.findByResetToken(token);
+  if (!user || !user.reset_token_expiry || user.reset_token_expiry < new Date()) {
+    return res.status(400).json({ error: 'Invalid or expired token' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await UserModel.updatePasswordAndClearResetToken(user.id, hashedPassword);
+
+  res.json({ message: 'Password reset successful. You can now log in.' });
 });
 
 // Auth Middleware
