@@ -1,17 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import api from '../api';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const token = localStorage.getItem('token');
+  const [auth, setAuth] = useState<'pending' | 'ok' | 'fail'>('pending');
 
-  if (!token) {
-    // Redirect to login page if not authenticated
-    return <Navigate to="/login" replace />;
-  }
+  useEffect(() => {
+    api.get('/profile')
+      .then(() => setAuth('ok'))
+      .catch(() => setAuth('fail'));
+  }, []);
 
+  if (auth === 'pending') return null; // Optionally show a spinner
+  if (auth === 'fail') return <Navigate to="/login" replace />;
   return <>{children}</>;
 } 

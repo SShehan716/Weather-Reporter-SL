@@ -14,6 +14,7 @@ import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { Client } from "@googlemaps/google-maps-services-js";
+import cookieParser from 'cookie-parser';
 
 // --- Google Maps Client Setup ---
 const googleMapsClient = new Client({});
@@ -52,8 +53,20 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors({ origin: process.env.FRONTEND_URL }));
+app.use(cors({ 
+  origin: process.env.FRONTEND_URL, 
+  credentials: true 
+}));
 app.use(express.json());
+app.use(cookieParser());
+
+// Redirect HTTP to HTTPS in production (Heroku)
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect('https://' + req.headers.host + req.url);
+  }
+  next();
+});
 
 // Register
 app.post('/api/register', async (req, res) => {
@@ -157,12 +170,18 @@ app.post('/api/login', async (req, res) => {
   const token = jwt.sign(
     { userId: user.id, username: user.username },
     process.env.JWT_SECRET as string,
-    { expiresIn: '24h' }
+    { expiresIn: '7d' }
   );
+
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
+  });
 
   res.json({ 
     message: 'Login successful',
-    token,
     user: {
       id: user.id,
       username: user.username,
@@ -171,19 +190,27 @@ app.post('/api/login', async (req, res) => {
   });
 });
 
+// Logout
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+  res.json({ message: 'Logged out successfully' });
+});
+
 // Auth Middleware
 interface AuthRequest extends Request {
   user?: { userId: number; username: string };
 }
 
 const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies.token;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return res.status(401).json({ error: 'Unauthorized: No token provided' });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string);

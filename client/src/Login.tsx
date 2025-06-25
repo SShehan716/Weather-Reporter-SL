@@ -14,8 +14,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await api.post('/login', { identifier, password });
-      localStorage.setItem('token', response.data.token);
+      await api.post('/login', { identifier, password });
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to login');
