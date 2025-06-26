@@ -92,6 +92,17 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 6 characters long' });
   }
 
+  // --- New logic for existing email ---
+  const existingUser = await UserModel.findByEmail(email);
+  if (existingUser) {
+    if (!existingUser.is_verified) {
+      return res.status(400).json({ error: 'This email is already registered but not verified. Please request a new verification email.' });
+    } else {
+      return res.status(400).json({ error: 'This email is already registered. If you forgot your password, please request a password reset.' });
+    }
+  }
+  // --- End new logic ---
+
   const hashedPassword = await bcrypt.hash(password, 10);
   const verificationToken = crypto.randomBytes(32).toString('hex');
 
@@ -104,6 +115,8 @@ app.post('/api/register', async (req, res) => {
       country,
       reset_token: null,
       reset_token_expiry: null,
+      lastVerificationEmailSent: null,
+      lastResetEmailSent: null,
     });
     
     const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
@@ -533,6 +546,47 @@ setInterval(() => {
   cleanupEmailStatus();
   console.log('[Email Service] Cleaned up old email status entries');
 }, 60 * 60 * 1000); // Run every hour
+
+// Resend Verification Email
+app.post('/api/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  const user = await UserModel.findByEmail(email);
+  if (!user) return res.status(400).json({ error: 'User not found' });
+  if (user.is_verified) return res.status(400).json({ error: 'User already verified' });
+  const lastSent = await UserModel.getLastVerificationEmailSent(email);
+  const now = new Date();
+  if (lastSent && now.getTime() - lastSent.getTime() < 60 * 1000) {
+    const wait = 60 - Math.floor((now.getTime() - lastSent.getTime()) / 1000);
+    return res.status(429).json({ error: `Please wait ${wait}s before resending.` });
+  }
+  if (!user.verification_token) return res.status(400).json({ error: 'No verification token found.' });
+  const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${user.verification_token}`;
+  await sendVerificationEmail(email, verificationLink);
+  await UserModel.updateLastVerificationEmailSent(email, now);
+  res.json({ message: 'Verification email resent. Please check your inbox.' });
+});
+
+// Resend Reset Password Email
+app.post('/api/resend-reset', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  const user = await UserModel.findByEmail(email);
+  if (!user) return res.status(400).json({ error: 'User not found' });
+  if (!user.reset_token || !user.reset_token_expiry || user.reset_token_expiry < new Date()) {
+    return res.status(400).json({ error: 'No valid reset token found. Please request a new password reset.' });
+  }
+  const lastSent = await UserModel.getLastResetEmailSent(email);
+  const now = new Date();
+  if (lastSent && now.getTime() - lastSent.getTime() < 60 * 1000) {
+    const wait = 60 - Math.floor((now.getTime() - lastSent.getTime()) / 1000);
+    return res.status(429).json({ error: `Please wait ${wait}s before resending.` });
+  }
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${user.reset_token}`;
+  await sendResetPasswordEmail(email, resetLink);
+  await UserModel.updateLastResetEmailSent(email, now);
+  res.json({ message: 'Password reset email resent. Please check your inbox.' });
+});
 
 // Start server
 app.listen(port, () => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../api';
 import Spinner from '../components/Spinner';
+import { Link } from 'react-router-dom';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -8,6 +9,9 @@ export default function ForgotPassword() {
   const [error, setError] = useState('');
   const [emailInfo, setEmailInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendError, setResendError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +32,33 @@ export default function ForgotPassword() {
       setError(err.response?.data?.error || 'Something went wrong.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendReset = async () => {
+    setResendLoading(true);
+    setResendError('');
+    
+    try {
+      await api.post('/resend-reset', { email });
+      setResendCooldown(60);
+      setResendError('');
+      
+      // Start countdown
+      const interval = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+    } catch (err: any) {
+      setResendError(err.response?.data?.error || 'Failed to resend reset link');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -76,8 +107,53 @@ export default function ForgotPassword() {
                   <li>Email delivery can take 2-5 minutes</li>
                   <li>The reset link is valid for 1 hour</li>
                 </ul>
+                
+                {/* Resend reset link button */}
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleResendReset}
+                    disabled={resendLoading || resendCooldown > 0}
+                    style={{
+                      padding: '10px 20px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: resendCooldown > 0 ? '#ccc' : '#1976d2',
+                      color: 'white',
+                      fontWeight: 600,
+                      cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      margin: '0 auto'
+                    }}
+                  >
+                    {resendLoading ? (
+                      <>
+                        <div style={{ width: '16px', height: '16px', border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                        Sending...
+                      </>
+                    ) : resendCooldown > 0 ? (
+                      `Resend in ${resendCooldown}s`
+                    ) : (
+                      'Resend reset link'
+                    )}
+                  </button>
+                  {resendError && (
+                    <p style={{ color: '#e53935', fontSize: '13px', marginTop: '8px', fontWeight: 500 }}>
+                      {resendError}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
+            {/* Go to Login link */}
+            <div style={{ marginTop: 18, textAlign: 'center' }}>
+              <Link to="/login" style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 500, fontSize: 15 }}>
+                Go to Login
+              </Link>
+            </div>
           </div>
         )}
         {error && <div style={{ color: '#e53935', marginBottom: 12, fontWeight: 600 }}>{error}</div>}

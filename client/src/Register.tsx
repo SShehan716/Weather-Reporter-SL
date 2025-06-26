@@ -17,6 +17,9 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailInfo, setEmailInfo] = useState<any>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendError, setResendError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,12 +57,45 @@ const Register = () => {
         }
       }, 8000); // Give user 8 seconds to read the info
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to register');
+      const errorMsg = err.response?.data?.error || 'Failed to register';
+      // If the error is about not verified, redirect to verify page
+      if (errorMsg.includes('already registered but not verified')) {
+        navigate('/verify', { state: { email } });
+        return;
+      }
+      setError(errorMsg);
       if (err.response?.data?.note) {
         setEmailInfo({ note: err.response.data.note });
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    setResendError('');
+    
+    try {
+      await api.post('/resend-verification', { email });
+      setResendCooldown(60);
+      setResendError('');
+      
+      // Start countdown
+      const interval = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+    } catch (err: any) {
+      setResendError(err.response?.data?.error || 'Failed to resend verification email');
+    } finally {
+      setResendLoading(false);
     }
   };
   
@@ -126,6 +162,45 @@ const Register = () => {
                       <li>Email delivery can take 2-5 minutes</li>
                       <li>You can try logging in once you receive the email</li>
                     </ul>
+                  </div>
+                  
+                  {/* Resend verification button */}
+                  <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendLoading || resendCooldown > 0}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: resendCooldown > 0 ? '#ccc' : '#1976d2',
+                        color: 'white',
+                        fontWeight: 600,
+                        cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        margin: '0 auto'
+                      }}
+                    >
+                      {resendLoading ? (
+                        <>
+                          <div style={{ width: '16px', height: '16px', border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                          Sending...
+                        </>
+                      ) : resendCooldown > 0 ? (
+                        `Resend in ${resendCooldown}s`
+                      ) : (
+                        'Resend verification email'
+                      )}
+                    </button>
+                    {resendError && (
+                      <p style={{ color: '#e53935', fontSize: '13px', marginTop: '8px', fontWeight: 500 }}>
+                        {resendError}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

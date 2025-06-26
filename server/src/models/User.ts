@@ -26,6 +26,8 @@ export class UserModel {
         updatedAt: true,
         reset_token: true,
         reset_token_expiry: true,
+        lastVerificationEmailSent: true,
+        lastResetEmailSent: true,
       },
     });
   }
@@ -73,6 +75,8 @@ export class UserModel {
         updatedAt: true,
         reset_token: true,
         reset_token_expiry: true,
+        lastVerificationEmailSent: true,
+        lastResetEmailSent: true,
       },
     });
   }
@@ -101,5 +105,27 @@ export class UserModel {
       where: { id },
       data: { password: hashedPassword, reset_token: null, reset_token_expiry: null }
     });
+  }
+
+  // Get last verification email sent time
+  static async getLastVerificationEmailSent(email: string): Promise<Date | null> {
+    const user = await prisma.user.findUnique({ where: { email }, select: { lastVerificationEmailSent: true } });
+    return user?.lastVerificationEmailSent || null;
+  }
+
+  // Update last verification email sent time
+  static async updateLastVerificationEmailSent(email: string, date: Date): Promise<void> {
+    await prisma.user.update({ where: { email }, data: { lastVerificationEmailSent: date } });
+  }
+
+  // Get last reset email sent time
+  static async getLastResetEmailSent(email: string): Promise<Date | null> {
+    const user = await prisma.user.findUnique({ where: { email }, select: { lastResetEmailSent: true } });
+    return user?.lastResetEmailSent || null;
+  }
+
+  // Update last reset email sent time
+  static async updateLastResetEmailSent(email: string, date: Date): Promise<void> {
+    await prisma.user.update({ where: { email }, data: { lastResetEmailSent: date } });
   }
 } 

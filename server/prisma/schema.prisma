@@ -21,6 +21,8 @@ model User {
   riskUpdates        RiskUpdate[]
   reset_token        String?  @unique
   reset_token_expiry DateTime?
+  lastVerificationEmailSent DateTime?
+  lastResetEmailSent DateTime?
 }
 
 model WeatherUpdate {
