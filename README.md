@@ -69,7 +69,45 @@ Weather-Reporter-SL/
 
 - **Frontend:** Vercel
 - **Backend:** Heroku
-- **Environment Variables:** Set for each environment (see `client/ENV_SETUP.md` and `server/WEATHER_API_SETUP.md`).
+- **Environment Variables:** Set for each environment (see below).
+
+---
+
+## Environment Variables & Setup
+
+### Client (`client/.env`)
+
+```
+REACT_APP_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+REACT_APP_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+REACT_APP_API_BASE_URL=https://your-backend-url.com
+```
+
+- `REACT_APP_GOOGLE_MAPS_API_KEY`: Google Maps JavaScript API key (enable Places API)
+- `REACT_APP_CLOUDINARY_CLOUD_NAME`: Your Cloudinary cloud name for image uploads
+- `REACT_APP_API_BASE_URL`: The base URL of your backend (Heroku or local)
+
+### Server (`server/.env`)
+
+```
+DATABASE_URL=postgresql://user:password@host:port/dbname
+JWT_SECRET=your_jwt_secret
+EMAIL_USER=your_gmail_address@gmail.com
+EMAIL_APP_PASSWORD=your_gmail_app_password
+FRONTEND_URL=https://your-frontend-url.com
+WEATHER_API_KEY=your_weatherapi_key
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+```
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `JWT_SECRET`: Secret for signing JWTs
+- `EMAIL_USER`: Gmail address for sending verification/reset emails
+- `EMAIL_APP_PASSWORD`: Gmail App Password (not your main password)
+- `FRONTEND_URL`: The deployed frontend URL (for email links)
+- `WEATHER_API_KEY`: API key from weatherapi.com
+- `CLOUDINARY_*`: Cloudinary credentials for image uploads
 
 ---
 
@@ -78,6 +116,7 @@ Weather-Reporter-SL/
 ### Prerequisites
 - Node.js (v18+ recommended)
 - npm or yarn
+- PostgreSQL database
 
 ### 1. Clone the repository
 ```bash
@@ -94,7 +133,7 @@ npm install
 ```
 
 ### 3. Environment Variables
-- See `client/ENV_SETUP.md` and `server/WEATHER_API_SETUP.md` for required environment variables.
+- Create `.env` files in both `client` and `server` folders as shown above.
 
 ### 4. Database Setup (Backend)
 ```bash
