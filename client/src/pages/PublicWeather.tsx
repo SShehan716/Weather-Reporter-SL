@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import GoogleMapsAutocomplete from '../components/GoogleMapsAutocomplete';
 import Map from '../components/Map';
@@ -45,6 +45,7 @@ export default function PublicWeather() {
   const [locationToFetch, setLocationToFetch] = useState('Colombo');
   const [searchQuery, setSearchQuery] = useState('Colombo');
   const [mapCenter, setMapCenter] = useState({ lat: 6.9271, lng: 79.8612 }); // Default to Colombo
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchWeather(locationToFetch);
@@ -128,6 +129,14 @@ export default function PublicWeather() {
     }
   };
 
+  const handleRetry = () => {
+    setSearchQuery('');
+    setError('');
+    setTimeout(() => {
+      if (inputRef.current) inputRef.current.focus();
+    }, 100);
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -161,7 +170,7 @@ export default function PublicWeather() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
           <div style={{ marginBottom: '16px' }}>Error: {error}</div>
           <button
-            onClick={() => fetchWeather(locationToFetch)}
+            onClick={handleRetry}
             style={{
               padding: '12px 24px',
               backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -169,11 +178,55 @@ export default function PublicWeather() {
               border: '2px solid white',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '16px'
+              fontSize: '16px',
+              marginRight: '12px'
             }}
           >
             Try Again
           </button>
+          <a
+            href="/"
+            style={{
+              padding: '12px 24px',
+              backgroundColor: 'white',
+              color: '#4f46e5',
+              border: '2px solid #4f46e5',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              textDecoration: 'none',
+              marginLeft: '12px',
+              fontWeight: 600
+            }}
+          >
+            Go to Home
+          </a>
+          <div style={{ marginTop: 32 }}>
+            <input
+              ref={inputRef}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search for a city, country, or district..."
+              style={{
+                boxSizing: `border-box`,
+                border: `1px solid #e0e0e0`,
+                width: `100%`,
+                maxWidth: 400,
+                height: `48px`,
+                padding: `0 16px`,
+                borderRadius: `8px`,
+                backgroundColor: `white`,
+                color: '#333',
+                fontSize: `16px`,
+                outline: `none`,
+                textOverflow: `ellipses`,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                margin: '0 auto',
+                display: 'block'
+              }}
+              autoFocus
+            />
+          </div>
         </div>
       </div>
     );
@@ -426,7 +479,7 @@ export default function PublicWeather() {
               </div>
             </div>
 
-            {/* UV Index */}
+            {/* UV */}
             <div style={{
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
               padding: '24px',
@@ -437,7 +490,7 @@ export default function PublicWeather() {
               <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
                 <WeatherIcon type="uv" size={32} color="white" />
               </div>
-              <div style={{ fontSize: '16px', marginBottom: '8px', opacity: 0.9 }}>UV Index</div>
+              <div style={{ fontSize: '16px', marginBottom: '8px', opacity: 0.9 }}>UV</div>
               <div style={{ 
                 fontSize: '24px', 
                 fontWeight: 'bold',

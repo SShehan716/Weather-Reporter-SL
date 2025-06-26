@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import WeatherIcon from './WeatherIcons';
 import UpdateCard, { Update as NearbyUpdate } from './UpdateCard';
@@ -23,7 +23,7 @@ interface WeatherData {
       kph: number;
       mph: number;
     };
-    uvIndex: number;
+    uv: number;
     condition: {
       text: string;
       icon: string;
@@ -43,6 +43,7 @@ export default function Weather() {
   const [locationToFetch, setLocationToFetch] = useState('Colombo');
   const [searchQuery, setSearchQuery] = useState('Colombo');
   const [localUpdates, setLocalUpdates] = useState<NearbyUpdate[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchWeather(locationToFetch);
@@ -94,6 +95,14 @@ export default function Weather() {
     return { level: 'Extreme', color: '#7c3aed' };
   };
 
+  const handleRetry = () => {
+    setSearchQuery('');
+    setError('');
+    setTimeout(() => {
+      if (inputRef.current) inputRef.current.focus();
+    }, 100);
+  };
+
   if (loading && !weather) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', fontSize: '18px', color: '#666' }}>
@@ -106,9 +115,33 @@ export default function Weather() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#dc3545' }}>
         <div style={{ marginBottom: '10px' }}>Error: {error}</div>
-        <button onClick={() => fetchWeather(locationToFetch)} style={{ padding: '8px 16px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+        <button onClick={handleRetry} style={{ padding: '8px 16px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginBottom: 16 }}>
           Retry
         </button>
+        <input
+          ref={inputRef}
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search for a city, country, or district..."
+          style={{
+            boxSizing: `border-box`,
+            border: `1px solid #e0e0e0`,
+            width: `100%`,
+            maxWidth: 400,
+            height: `48px`,
+            padding: `0 16px`,
+            borderRadius: `8px`,
+            backgroundColor: `white`,
+            color: '#333',
+            fontSize: `16px`,
+            outline: `none`,
+            textOverflow: `ellipses`,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+            margin: '0 auto',
+            display: 'block'
+          }}
+          autoFocus
+        />
       </div>
     );
   }
@@ -117,7 +150,7 @@ export default function Weather() {
     return <div>No weather data available.</div>;
   }
   
-  const uvInfo = getUvLevel(weather.current.uvIndex);
+  const uvInfo = getUvLevel(weather.current.uv);
 
   return (
     <div>
@@ -186,8 +219,8 @@ export default function Weather() {
           </div>
           <div style={{ background: '#b45309', color: 'white', padding: '20px', borderRadius: '12px' }}>
             <WeatherIcon type="uv" size={40} />
-            <h4 style={{ margin: '10px 0 5px 0' }}>UV Index</h4>
-            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{weather.current.uvIndex} <span style={{fontSize: '16px', opacity: 0.9}}>({uvInfo.level})</span></p>
+            <h4 style={{ margin: '10px 0 5px 0' }}>UV</h4>
+            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{weather.current.uv} <span style={{fontSize: '16px', opacity: 0.9}}>({uvInfo.level})</span></p>
           </div>
         </div>
 
