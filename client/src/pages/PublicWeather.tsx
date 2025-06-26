@@ -116,9 +116,9 @@ export default function PublicWeather() {
   const getWeatherBackground = (condition: string) => {
     const conditionLower = condition.toLowerCase();
     if (conditionLower.includes('sunny') || conditionLower.includes('clear')) {
-      return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+      return 'https://images.unsplash.com/photo-1743738049563-520b88442d04?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
     } else if (conditionLower.includes('cloud') || conditionLower.includes('overcast')) {
-      return 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+      return 'https://images.unsplash.com/photo-1633555288122-a47b3e12c24d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
     } else if (conditionLower.includes('rain') || conditionLower.includes('drizzle')) {
       return 'https://images.unsplash.com/photo-1519692933481-e162a57d6721?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
     } else if (conditionLower.includes('storm') || conditionLower.includes('thunder')) {
