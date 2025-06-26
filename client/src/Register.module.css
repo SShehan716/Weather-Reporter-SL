@@ -75,6 +75,32 @@
   color: #81d4fa;
 }
 
+.successContainer {
+  margin-bottom: 16px;
+}
+
+.emailInfo {
+  margin-top: 10px;
+  padding: 18px 18px 12px 18px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 10px;
+  border-left: 6px solid #388e3c;
+  color: #222;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.emailInfo strong {
+  color: #1976d2;
+}
+
+.emailInfo ul {
+  color: #333;
+}
+
+.emailInfo li {
+  margin-bottom: 2px;
+}
+
 .inputGroup {
   margin-bottom: 16px;
 }

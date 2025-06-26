@@ -16,6 +16,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailInfo, setEmailInfo] = useState<any>(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,17 +30,34 @@ const Register = () => {
       return;
     }
     setLoading(true);
+    setError('');
+    setSuccess('');
+    setEmailInfo(null);
+    
     try {
-      await api.post('/register', {
+      const response = await api.post('/register', {
         username,
         email,
         password,
         country,
       });
-      setSuccess('Registration successful! Please check your email to verify your account. Redirecting to login...');
-      setTimeout(() => navigate('/login'), 3000);
+      
+      setSuccess('Registration successful! Please check your email to verify your account.');
+      if (response.data.emailInfo) {
+        setEmailInfo(response.data.emailInfo);
+      }
+      
+      // Don't auto-redirect, let user see the email info
+      setTimeout(() => {
+        if (emailInfo) {
+          navigate('/login');
+        }
+      }, 8000); // Give user 8 seconds to read the info
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to register');
+      if (err.response?.data?.note) {
+        setEmailInfo({ note: err.response.data.note });
+      }
     } finally {
       setLoading(false);
     }
@@ -81,7 +99,38 @@ const Register = () => {
         <div className={styles.formWrapper}>
           <h2 className={styles.title}>Create an Account</h2>
           {error && <p className={styles.error}>{error}</p>}
-          {success && <p className={styles.success}>{success}</p>}
+          {success && (
+            <div className={styles.successContainer}>
+              <p className={styles.success}>{success}</p>
+              {emailInfo && (
+                <div className={styles.emailInfo}>
+                  <p style={{ fontSize: '15px', color: '#1976d2', marginTop: '10px', fontWeight: 600 }}>
+                    <strong>Email sent at:</strong> {new Date(emailInfo.sentAt).toLocaleString()}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#333', marginTop: '5px' }}>
+                    {emailInfo.note}
+                  </p>
+                  <div style={{
+                    background: '#e8f5e9',
+                    padding: '12px',
+                    borderRadius: '7px',
+                    marginTop: '12px',
+                    fontSize: '14px',
+                    color: '#256029',
+                    borderLeft: '5px solid #43a047',
+                    fontWeight: 500
+                  }}>
+                    <strong>Tips:</strong>
+                    <ul style={{ margin: '7px 0 0 22px', padding: 0 }}>
+                      <li>Check your spam/junk folder</li>
+                      <li>Email delivery can take 2-5 minutes</li>
+                      <li>You can try logging in once you receive the email</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <form onSubmit={handleSubmit}>
             <div className={styles.inputGroup}>
               <label htmlFor="username">Username</label>

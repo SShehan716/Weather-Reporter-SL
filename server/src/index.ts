@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { sendVerificationEmail, sendResetPasswordEmail } from './email';
+import { sendVerificationEmail, sendResetPasswordEmail, getEmailDeliveryStatus, cleanupEmailStatus } from './email';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
@@ -76,7 +76,7 @@ app.post('/api/register', async (req, res) => {
   const { username, email, password, country } = req.body;
   
   if (!username || !email || !password || !country) {
-    return res.status(400).json({ error: 'Username, email, password, and country are required' });
+    return res.status(400).json({ error: 'All fields are required' });
   }
 
   if (username.length < 3) {
@@ -105,9 +105,18 @@ app.post('/api/register', async (req, res) => {
       reset_token: null,
       reset_token_expiry: null,
     });
+    
     const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
-    await sendVerificationEmail(email, verificationLink);
-    res.status(201).json({ message: 'User registered. Please check your email to verify your account.' });
+    const emailResult = await sendVerificationEmail(email, verificationLink);
+    
+    res.status(201).json({ 
+      message: 'Registration successful! Please check your email to verify your account.',
+      emailInfo: {
+        sentAt: emailResult?.sentTime || new Date(),
+        emailId: emailResult?.emailId || 'unknown',
+        note: 'Email delivery can take a few minutes. Please check your spam/junk folder if you don\'t see it in your inbox.'
+      }
+    });
   } catch (err: any) {
     console.error('Register error:', err);
     
@@ -120,13 +129,44 @@ app.post('/api/register', async (req, res) => {
       }
     }
     
-    if (err.message === 'Failed to send verification email') {
+    if (err.message === 'Failed to send verification email after multiple attempts') {
       return res.status(500).json({ 
-        error: 'Registration successful but failed to send verification email. Please contact support.' 
+        error: 'Registration successful but failed to send verification email. Please contact support or try again later.',
+        note: 'You can try logging in later if the email arrives, or contact support for assistance.'
       });
     }
     
     res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
+});
+
+// Check Email Delivery Status
+app.get('/api/email-status/:emailId', async (req, res) => {
+  const { emailId } = req.params;
+  
+  if (!emailId) {
+    return res.status(400).json({ error: 'Email ID is required' });
+  }
+
+  try {
+    const status = getEmailDeliveryStatus(emailId);
+    
+    if (!status) {
+      return res.status(404).json({ error: 'Email status not found' });
+    }
+
+    res.json({
+      emailId,
+      sent: status.sent,
+      timestamp: status.timestamp,
+      attempts: status.attempts,
+      message: status.sent 
+        ? 'Email was sent successfully' 
+        : 'Email delivery is in progress or failed'
+    });
+  } catch (error) {
+    console.error('Email status check error:', error);
+    res.status(500).json({ error: 'Failed to check email status' });
   }
 });
 
@@ -487,6 +527,12 @@ app.get('/api/weather', async (req, res) => {
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Weather Reporter API' });
 });
+
+// Clean up old email status entries every hour
+setInterval(() => {
+  cleanupEmailStatus();
+  console.log('[Email Service] Cleaned up old email status entries');
+}, 60 * 60 * 1000); // Run every hour
 
 // Start server
 app.listen(port, () => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import Spinner from '../components/Spinner';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -12,6 +13,7 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,17 +23,21 @@ export default function ResetPassword() {
       setError('Passwords do not match');
       return;
     }
+    setLoading(true);
     try {
       await api.post('/reset-password', { token, password });
       setMessage('Password reset successful! Redirecting to login...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Something went wrong.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="auth-container" style={{ maxWidth: 400, margin: '40px auto', padding: 24, background: 'rgba(255,255,255,0.05)', borderRadius: 12 }}>
+      {loading && <Spinner />}
       <h2>Reset Password</h2>
       {message && <div style={{ color: 'green', marginBottom: 12 }}>{message}</div>}
       {error && <div style={{ color: 'red', marginBottom: 12 }}>{error}</div>}
